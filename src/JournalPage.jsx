@@ -16,16 +16,21 @@ export default function JournalPage() {
   useEffect(() => { loadDates(); }, []);
 
   async function loadDates() {
-    const { data } = await supabase
-      .from("journals")
-      .select("upload_date, id")
-      .order("upload_date", { ascending: false })
-      .limit(10000);
-    if (data) {
-      const map = {};
+    // RPC 대신 페이지네이션으로 전체 upload_date 수집
+    const map = {};
+    let from = 0;
+    while (true) {
+      const { data } = await supabase
+        .from("journals")
+        .select("upload_date")
+        .order("id")
+        .range(from, from + 999);
+      if (!data || data.length === 0) break;
       data.forEach(r => { map[r.upload_date] = (map[r.upload_date] || 0) + 1; });
-      setDates(Object.entries(map).sort((a, b) => b[0].localeCompare(a[0])));
+      if (data.length < 1000) break;
+      from += 1000;
     }
+    setDates(Object.entries(map).sort((a, b) => b[0].localeCompare(a[0])));
   }
 
   function handleFile(e) {
