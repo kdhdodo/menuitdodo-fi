@@ -169,7 +169,7 @@ export default function SettlementPage() {
         </div>
       </div>
 
-      {/* 대사 */}
+      {/* 정산 */}
       {(() => {
         const bsResult = 0 + 0 - 0; // 재고 + 잔고 - 부채 (추후 연동)
         const diff = Math.abs(currentRetained - bsResult);
@@ -177,7 +177,7 @@ export default function SettlementPage() {
         const isMatch = hasBsData && diff < 1;
         return (
           <div style={{ background: "#11141c", borderRadius: 12, border: `1px solid ${!hasBsData ? "#1e2130" : isMatch ? "rgba(78,205,196,0.3)" : "rgba(255,107,107,0.3)"}`, padding: 24 }}>
-            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 20 }}>대사</div>
+            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 20 }}>정산</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 16, alignItems: "center" }}>
               {/* 왼쪽: 이익잉여금 */}
               <div style={{ background: "#0d0f14", borderRadius: 8, padding: 16 }}>
@@ -234,7 +234,7 @@ export default function SettlementPage() {
                 {!hasBsData ? "—" : isMatch ? "0" : diff.toLocaleString()}
               </div>
               <div style={{ fontSize: 12, fontWeight: 700, marginTop: 4, color: !hasBsData ? "#4a4d5e" : isMatch ? "#4ecdc4" : "#ff6b6b" }}>
-                {!hasBsData ? "재고/잔고 데이터 입력 시 대사 가능" : isMatch ? "정상 — 대사 완료" : "오차 발생"}
+                {!hasBsData ? "재고/잔고 데이터 입력 시 정산 가능" : isMatch ? "정상 — 정산 완료" : "오차 발생"}
               </div>
             </div>
           </div>
