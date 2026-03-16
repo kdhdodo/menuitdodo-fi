@@ -74,7 +74,7 @@ export default function SettlementPage() {
       if (prefix === "04") revenue.push({ name: a.name, amount: a.credit });
       else if (prefix === "08") expense.push({ name: a.name, amount: a.debit });
       else if (a.code === "025300" || a.code === "025500" || a.code === "025900") liabilityItems.push({ name: a.name, amount: a.credit - a.debit });
-      else if (a.code === "010800" || a.code === "013100") assetItems.push({ name: a.name, amount: a.debit - a.credit });
+      else if (a.code === "013100") assetItems.push({ name: a.name, amount: a.debit - a.credit });
     });
 
     const revTotal = revenue.reduce((s, r) => s + r.amount, 0);
