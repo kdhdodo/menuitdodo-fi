@@ -133,48 +133,6 @@ export default function SettlementPage() {
         ))}
       </div>
 
-      {/* Gross Profit */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
-        {/* 왼쪽: 매출 */}
-        <div style={{ background: "#11141c", borderRadius: 12, border: "1px solid #1e2130", padding: 24 }}>
-          <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 16 }}>매출</div>
-          {plLoading ? <div style={{ color: "#4a4d5e", fontSize: 13 }}>불러오는 중...</div> : (
-            <>
-              {plData.revenue.length === 0 ? (
-                <div style={{ fontSize: 13, color: "#4a4d5e" }}>데이터 없음</div>
-              ) : (
-                plData.revenue.map((r, i) => (
-                  <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13, borderBottom: "1px solid #1a1d2a" }}>
-                    <span style={{ color: "#8a8ea0" }}>{r.name}</span>
-                    <span style={{ color: "#4ecdc4", fontWeight: 600 }}>{r.amount.toLocaleString()}</span>
-                  </div>
-                ))
-              )}
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", marginTop: 4, fontSize: 14, fontWeight: 800 }}>
-                <span style={{ color: "#4ecdc4" }}>매출 합계</span>
-                <span style={{ color: "#4ecdc4" }}>{plData.revTotal.toLocaleString()}</span>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* 오른쪽: 출고 */}
-        <div style={{ background: "#11141c", borderRadius: 12, border: "1px solid #1e2130", padding: 24 }}>
-          <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 16 }}>출고</div>
-          <div style={{ fontSize: 13, color: "#4a4d5e", padding: "12px 0" }}>영업팀에서 출고 데이터를 업로드하면 표시됩니다</div>
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", marginTop: 4, fontSize: 14, fontWeight: 800 }}>
-            <span style={{ color: "#ff6b9d" }}>출고 합계</span>
-            <span style={{ color: "#4a4d5e" }}>—</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Gross Profit 합계 */}
-      <div style={{ background: "#11141c", borderRadius: 12, border: "1px solid #7c5cfc33", padding: "16px 24px", marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ fontSize: 16, fontWeight: 800, background: "linear-gradient(135deg,#7c5cfc,#4a9eff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Gross Profit (매출총이익)</div>
-        <div style={{ fontSize: 20, fontWeight: 800, color: "#4ecdc4" }}>{plData.revTotal.toLocaleString()}</div>
-      </div>
-
       {/* 좌우 대칭: 손익 / 자산 */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
         {/* 왼쪽: 손익계산서 */}
