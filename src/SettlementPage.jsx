@@ -19,11 +19,6 @@ export default function SettlementPage() {
   // 전기 이익잉여금 (1월~전월까지 누적 당기순이익)
   const [prevRetained, setPrevRetained] = useState(0);
   const [retainedLoading, setRetainedLoading] = useState(false);
-  // 일별 정산 목록
-  const [dailyList, setDailyList] = useState([]);
-  // 저장된 정산표
-  const [settlements, setSettlements] = useState({});
-  const [settling, setSettling] = useState(null);
   const [plLoading, setPlLoading] = useState(false);
 
   useEffect(() => { loadAll(); }, [year, month]);
@@ -31,7 +26,7 @@ export default function SettlementPage() {
   async function loadAll() {
     setPlLoading(true);
     setRetainedLoading(true);
-    await Promise.all([loadPL(), loadSettlements(), loadPrevRetained()]);
+    await Promise.all([loadPL(), loadPrevRetained()]);
     setPlLoading(false);
     setRetainedLoading(false);
   }
@@ -85,18 +80,11 @@ export default function SettlementPage() {
 
     // 계정과목별 집계
     const acctMap = {};
-    const dayMap = {};
     all.forEach(r => {
       const key = r.account_code + "_" + r.account_name;
       if (!acctMap[key]) acctMap[key] = { code: r.account_code, name: r.account_name, debit: 0, credit: 0 };
       acctMap[key].debit += Number(r.debit) || 0;
       acctMap[key].credit += Number(r.credit) || 0;
-
-      // 일별 차변/대변 합계
-      const d = r.entry_date;
-      if (!dayMap[d]) dayMap[d] = { debit: 0, credit: 0 };
-      dayMap[d].debit += Number(r.debit) || 0;
-      dayMap[d].credit += Number(r.credit) || 0;
     });
 
     // 매출: 04로 시작하는 계정 (매출 계정)
@@ -122,40 +110,6 @@ export default function SettlementPage() {
     setAssets({ items: assetItems.filter(a => a.amount !== 0), total: assetTotal });
     setStockIn(stockInTotal);
 
-    // 일별 리스트
-    const days = Object.entries(dayMap)
-      .map(([date, v]) => ({ date, debit: v.debit, credit: v.credit, diff: Math.abs(v.debit - v.credit) }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-    setDailyList(days);
-  }
-
-  async function loadSettlements() {
-    const startDate = `${year}-${pad(month)}-01`;
-    const endDate = `${year}-${pad(month)}-${new Date(year, month, 0).getDate()}`;
-    const { data } = await supabase
-      .from("settlements")
-      .select("*")
-      .gte("settlement_date", startDate)
-      .lte("settlement_date", endDate);
-    const map = {};
-    (data || []).forEach(s => { map[s.settlement_date] = s; });
-    setSettlements(map);
-  }
-
-  async function handleSettle(day) {
-    setSettling(day.date);
-    const status = day.diff === 0 ? "normal" : "error";
-    const { error } = await supabase.from("settlements").upsert({
-      settlement_date: day.date,
-      total_debit: day.debit,
-      total_credit: day.credit,
-      diff: day.diff,
-      status,
-      settled_at: new Date().toISOString(),
-    }, { onConflict: "settlement_date" });
-    if (error) alert(`정산 실패: ${error.message}`);
-    setSettling(null);
-    loadSettlements();
   }
 
   const netIncome = plData.revTotal - plData.expTotal;
@@ -350,83 +304,23 @@ export default function SettlementPage() {
                 </div>
               </div>
             </div>
-            {!isMatch && (
-              <div style={{ marginTop: 12, fontSize: 13, color: "#ff6b6b", textAlign: "center" }}>
-                차이: {diff.toLocaleString()}
+            {/* 차이 블럭 */}
+            <div style={{
+              marginTop: 16, padding: "16px 24px", borderRadius: 10, textAlign: "center",
+              background: isMatch ? "rgba(78,205,196,0.08)" : "rgba(255,107,107,0.08)",
+              border: `1px solid ${isMatch ? "rgba(78,205,196,0.3)" : "rgba(255,107,107,0.3)"}`,
+            }}>
+              <div style={{ fontSize: 12, color: "#4a4d5e", marginBottom: 4 }}>차이</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: isMatch ? "#4ecdc4" : "#ff6b6b" }}>
+                {isMatch ? "0" : diff.toLocaleString()}
               </div>
-            )}
+              <div style={{ fontSize: 12, fontWeight: 700, marginTop: 4, color: isMatch ? "#4ecdc4" : "#ff6b6b" }}>
+                {isMatch ? "정상 — 대사 완료" : "오차 발생"}
+              </div>
+            </div>
           </div>
         );
       })()}
-
-      {/* 하단: 정산표 */}
-      <div style={{ background: "#11141c", borderRadius: 12, border: "1px solid #1e2130", padding: 24 }}>
-        <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 16 }}>정산표</div>
-        {dailyList.length === 0 ? (
-          <div style={{ fontSize: 13, color: "#4a4d5e", textAlign: "center", padding: 20 }}>해당 월 분개장 데이터가 없습니다</div>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid #1e2130" }}>
-                  {["날짜", "차변 합계", "대변 합계", "차이", "상태", ""].map(h => (
-                    <th key={h} style={{ padding: "10px 8px", textAlign: h === "" ? "right" : "left", color: "#4a4d5e", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {dailyList.map(day => {
-                  const settled = settlements[day.date];
-                  const isOk = day.diff === 0;
-                  return (
-                    <tr key={day.date} style={{ borderBottom: "1px solid #1a1d2a" }}>
-                      <td style={{ padding: "10px 8px", fontWeight: 600 }}>{day.date}</td>
-                      <td style={{ padding: "10px 8px", color: "#4ecdc4" }}>{day.debit.toLocaleString()}</td>
-                      <td style={{ padding: "10px 8px", color: "#ff6b9d" }}>{day.credit.toLocaleString()}</td>
-                      <td style={{ padding: "10px 8px", color: isOk ? "#4a4d5e" : "#ff6b6b", fontWeight: isOk ? 400 : 700 }}>
-                        {isOk ? "0" : day.diff.toLocaleString()}
-                      </td>
-                      <td style={{ padding: "10px 8px" }}>
-                        {settled ? (
-                          <span style={{
-                            background: settled.status === "normal" ? "rgba(78,205,196,0.1)" : "rgba(255,107,107,0.1)",
-                            color: settled.status === "normal" ? "#4ecdc4" : "#ff6b6b",
-                            border: `1px solid ${settled.status === "normal" ? "rgba(78,205,196,0.3)" : "rgba(255,107,107,0.3)"}`,
-                            borderRadius: 5, padding: "3px 10px", fontSize: 11, fontWeight: 700,
-                          }}>
-                            {settled.status === "normal" ? "정산 완료" : "오차 있음"}
-                          </span>
-                        ) : (
-                          <span style={{ color: "#4a4d5e", fontSize: 11 }}>미정산</span>
-                        )}
-                      </td>
-                      <td style={{ padding: "10px 8px", textAlign: "right" }}>
-                        {!settled ? (
-                          <button
-                            onClick={() => handleSettle(day)}
-                            disabled={settling === day.date}
-                            style={{
-                              background: "linear-gradient(135deg,#7c5cfc,#4a9eff)", border: "none", color: "#fff",
-                              borderRadius: 6, padding: "5px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
-                              opacity: settling === day.date ? 0.5 : 1,
-                            }}
-                          >
-                            {settling === day.date ? "..." : "정산"}
-                          </button>
-                        ) : (
-                          <span style={{ fontSize: 11, color: "#4a4d5e" }}>
-                            {new Date(settled.settled_at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
