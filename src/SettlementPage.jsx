@@ -16,6 +16,9 @@ export default function SettlementPage() {
   const [assets, setAssets] = useState({ items: [], total: 0 });
   // 재고 (매입)
   const [stockIn, setStockIn] = useState(0);
+  // 전기 이익잉여금 (1월~전월까지 누적 당기순이익)
+  const [prevRetained, setPrevRetained] = useState(0);
+  const [retainedLoading, setRetainedLoading] = useState(false);
   // 일별 정산 목록
   const [dailyList, setDailyList] = useState([]);
   // 저장된 정산표
@@ -27,8 +30,37 @@ export default function SettlementPage() {
 
   async function loadAll() {
     setPlLoading(true);
-    await Promise.all([loadPL(), loadSettlements()]);
+    setRetainedLoading(true);
+    await Promise.all([loadPL(), loadSettlements(), loadPrevRetained()]);
     setPlLoading(false);
+    setRetainedLoading(false);
+  }
+
+  // 1월~전월까지 누적 당기순이익 = 전기이익잉여금
+  async function loadPrevRetained() {
+    if (month === 1) { setPrevRetained(0); return; }
+    const startDate = `${year}-01-01`;
+    const endDate = `${year}-${pad(month - 1)}-${new Date(year, month - 1, 0).getDate()}`;
+    let all = [], from = 0;
+    while (true) {
+      const { data } = await supabase
+        .from("journals")
+        .select("account_code, debit, credit")
+        .gte("entry_date", startDate)
+        .lte("entry_date", endDate)
+        .range(from, from + 999);
+      if (!data || data.length === 0) break;
+      all = all.concat(data);
+      if (data.length < 1000) break;
+      from += 1000;
+    }
+    let rev = 0, exp = 0;
+    all.forEach(r => {
+      const prefix = r.account_code?.substring(0, 2);
+      if (prefix === "04") rev += Number(r.credit) || 0;
+      else if (prefix === "08") exp += Number(r.debit) || 0;
+    });
+    setPrevRetained(rev - exp);
   }
 
   async function loadPL() {
@@ -264,6 +296,68 @@ export default function SettlementPage() {
           </div>
         </div>
       </div>
+
+      {/* 대사 (이익잉여금 검증) */}
+      {(() => {
+        const currentRetained = prevRetained + netIncome;
+        const bsResult = assets.total - liabilities.total + stockIn;
+        const diff = Math.abs(currentRetained - bsResult);
+        const isMatch = diff < 1;
+        return (
+          <div style={{ background: "#11141c", borderRadius: 12, border: `1px solid ${isMatch ? "rgba(78,205,196,0.3)" : "rgba(255,107,107,0.3)"}`, padding: 24, marginBottom: 24 }}>
+            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 16 }}>대사 (이익잉여금 검증)</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 16, alignItems: "center" }}>
+              {/* 왼쪽: 손익 기반 */}
+              <div style={{ background: "#0d0f14", borderRadius: 8, padding: 16 }}>
+                <div style={{ fontSize: 12, color: "#4a4d5e", marginBottom: 8 }}>손익 기반</div>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13 }}>
+                  <span style={{ color: "#8a8ea0" }}>전기이월 이익잉여금</span>
+                  <span style={{ color: "#e8eaf0", fontWeight: 600 }}>{retainedLoading ? "..." : prevRetained.toLocaleString()}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13 }}>
+                  <span style={{ color: "#8a8ea0" }}>+ 당기순이익</span>
+                  <span style={{ color: netIncome >= 0 ? "#4ecdc4" : "#ff6b6b", fontWeight: 600 }}>{netIncome.toLocaleString()}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: "1px solid #1e2130", marginTop: 4, fontSize: 14, fontWeight: 800 }}>
+                  <span>이익잉여금</span>
+                  <span style={{ color: "#7c5cfc" }}>{retainedLoading ? "..." : currentRetained.toLocaleString()}</span>
+                </div>
+              </div>
+
+              {/* 가운데: = */}
+              <div style={{ fontSize: 28, fontWeight: 800, color: isMatch ? "#4ecdc4" : "#ff6b6b" }}>
+                {isMatch ? "=" : "≠"}
+              </div>
+
+              {/* 오른쪽: 재무상태 기반 */}
+              <div style={{ background: "#0d0f14", borderRadius: 8, padding: 16 }}>
+                <div style={{ fontSize: 12, color: "#4a4d5e", marginBottom: 8 }}>재무상태 기반</div>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13 }}>
+                  <span style={{ color: "#8a8ea0" }}>재고</span>
+                  <span style={{ color: "#f59e0b", fontWeight: 600 }}>{stockIn.toLocaleString()}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13 }}>
+                  <span style={{ color: "#8a8ea0" }}>자산</span>
+                  <span style={{ color: "#4a9eff", fontWeight: 600 }}>{assets.total.toLocaleString()}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13 }}>
+                  <span style={{ color: "#8a8ea0" }}>- 부채</span>
+                  <span style={{ color: "#ff6b6b", fontWeight: 600 }}>{liabilities.total.toLocaleString()}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: "1px solid #1e2130", marginTop: 4, fontSize: 14, fontWeight: 800 }}>
+                  <span>합계</span>
+                  <span style={{ color: "#7c5cfc" }}>{bsResult.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+            {!isMatch && (
+              <div style={{ marginTop: 12, fontSize: 13, color: "#ff6b6b", textAlign: "center" }}>
+                차이: {diff.toLocaleString()}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* 하단: 정산표 */}
       <div style={{ background: "#11141c", borderRadius: 12, border: "1px solid #1e2130", padding: 24 }}>
