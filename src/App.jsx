@@ -5,7 +5,17 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setLoading(false); });
+    async function init() {
+      const params = new URLSearchParams(window.location.hash.substring(1));
+      const at = params.get("access_token"), rt = params.get("refresh_token");
+      if (at && rt) {
+        await supabase.auth.setSession({ access_token: at, refresh_token: rt });
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+      const { data } = await supabase.auth.getSession();
+      setSession(data.session); setLoading(false);
+    }
+    init();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => subscription.unsubscribe();
   }, []);
