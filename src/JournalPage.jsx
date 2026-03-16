@@ -18,11 +18,13 @@ export default function JournalPage() {
   async function loadDates() {
     const { data } = await supabase
       .from("journals")
-      .select("upload_date")
-      .order("upload_date", { ascending: false });
+      .select("upload_date, id")
+      .order("upload_date", { ascending: false })
+      .limit(10000);
     if (data) {
-      const unique = [...new Set(data.map(r => r.upload_date))];
-      setDates(unique);
+      const map = {};
+      data.forEach(r => { map[r.upload_date] = (map[r.upload_date] || 0) + 1; });
+      setDates(Object.entries(map).sort((a, b) => b[0].localeCompare(a[0])));
     }
   }
 
@@ -93,13 +95,22 @@ export default function JournalPage() {
   async function handleViewDate(date) {
     setSelectedDate(date);
     setViewLoading(true);
-    const { data } = await supabase
-      .from("journals")
-      .select("*")
-      .eq("upload_date", date)
-      .order("entry_date")
-      .order("slip_no");
-    setViewData(data || []);
+    // 전체 데이터를 1000건씩 나눠서 가져오기
+    let all = [], from = 0;
+    while (true) {
+      const { data } = await supabase
+        .from("journals")
+        .select("*")
+        .eq("upload_date", date)
+        .order("entry_date")
+        .order("slip_no")
+        .range(from, from + 999);
+      if (!data || data.length === 0) break;
+      all = all.concat(data);
+      if (data.length < 1000) break;
+      from += 1000;
+    }
+    setViewData(all);
     setViewLoading(false);
   }
 
@@ -175,7 +186,7 @@ export default function JournalPage() {
           <div style={{ fontSize: 13, color: "#4a4d5e" }}>아직 업로드된 분개장이 없습니다.</div>
         ) : (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {dates.map(d => (
+            {dates.map(([d, cnt]) => (
               <button
                 key={d}
                 onClick={() => handleViewDate(d)}
@@ -190,7 +201,7 @@ export default function JournalPage() {
                   cursor: "pointer",
                 }}
               >
-                {d}
+                {d} ({cnt.toLocaleString()}건)
               </button>
             ))}
           </div>
