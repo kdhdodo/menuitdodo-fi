@@ -2,12 +2,18 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 import Login from "./Login";
 import JournalPage from "./JournalPage";
+import BalancePage from "./BalancePage";
+import InventoryPage from "./InventoryPage";
+import SettlementPage from "./SettlementPage";
 import AdminPage from "./AdminPage";
 
 const FONT = "'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif";
 
 const TABS = [
   { key: "journal", label: "분개장" },
+  { key: "balance", label: "잔고" },
+  { key: "inventory", label: "재고" },
+  { key: "settlement", label: "정산" },
 ];
 
 export default function App() {
@@ -101,6 +107,9 @@ export default function App() {
 
       {/* 페이지 */}
       {view === "user" && tab === "journal" && <JournalPage />}
+      {view === "user" && tab === "balance" && <BalancePage />}
+      {view === "user" && tab === "inventory" && <InventoryPage />}
+      {view === "user" && tab === "settlement" && <SettlementPage />}
       {view === "admin" && <AdminPage />}
     </div>
   );
