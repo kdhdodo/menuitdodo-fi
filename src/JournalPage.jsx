@@ -4,45 +4,72 @@ import * as XLSX from "xlsx";
 
 export default function JournalPage() {
   const [records, setRecords] = useState([]);
+  const [fileName, setFileName] = useState("");
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState(null);
-  const [dates, setDates] = useState([]);
-  const [selectedDate, setSelectedDate] = useState(null);
+  const [batches, setBatches] = useState([]);
+  const [selectedBatch, setSelectedBatch] = useState(null);
   const [viewData, setViewData] = useState([]);
   const [viewLoading, setViewLoading] = useState(false);
+  const [deleting, setDeleting] = useState(null);
   const fileRef = useRef();
 
-  // 업로드 날짜 목록 불러오기
-  useEffect(() => { loadDates(); }, []);
+  useEffect(() => { loadBatches(); }, []);
 
-  async function loadDates() {
-    // RPC 대신 페이지네이션으로 전체 upload_date 수집
+  async function loadBatches() {
+    // batch_id별로 그룹핑 — 페이지네이션으로 전체 수집
     const map = {};
     let from = 0;
     while (true) {
       const { data } = await supabase
         .from("journals")
-        .select("upload_date")
+        .select("batch_id, upload_date, file_name")
         .order("id")
         .range(from, from + 999);
       if (!data || data.length === 0) break;
-      data.forEach(r => { map[r.upload_date] = (map[r.upload_date] || 0) + 1; });
+      data.forEach(r => {
+        if (!r.batch_id) return;
+        if (!map[r.batch_id]) map[r.batch_id] = { batch_id: r.batch_id, upload_date: r.upload_date, file_name: r.file_name, count: 0 };
+        map[r.batch_id].count++;
+      });
       if (data.length < 1000) break;
       from += 1000;
     }
-    setDates(Object.entries(map).sort((a, b) => b[0].localeCompare(a[0])));
+    // batch_id가 없는 레거시 데이터도 하나로 묶기
+    let legacyFrom = 0, legacyCount = 0;
+    while (true) {
+      const { data } = await supabase
+        .from("journals")
+        .select("id")
+        .is("batch_id", null)
+        .range(legacyFrom, legacyFrom + 999);
+      if (!data || data.length === 0) break;
+      legacyCount += data.length;
+      if (data.length < 1000) break;
+      legacyFrom += 1000;
+    }
+    if (legacyCount > 0) {
+      map["__legacy__"] = { batch_id: "__legacy__", upload_date: "이전 데이터", file_name: "batch_id 없음", count: legacyCount };
+    }
+
+    const list = Object.values(map).sort((a, b) => {
+      if (a.batch_id === "__legacy__") return 1;
+      if (b.batch_id === "__legacy__") return -1;
+      return b.batch_id.localeCompare(a.batch_id);
+    });
+    setBatches(list);
   }
 
   function handleFile(e) {
     const file = e.target.files[0];
     if (!file) return;
     setMessage(null);
+    setFileName(file.name);
     const reader = new FileReader();
     reader.onload = (evt) => {
       const wb = XLSX.read(evt.target.result, { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-      // 헤더 2줄 스킵, 데이터부터 파싱
       const parsed = [];
       for (let i = 2; i < rows.length; i++) {
         const r = rows[i];
@@ -75,9 +102,9 @@ export default function JournalPage() {
     setMessage("업로드 중...");
 
     const today = new Date().toISOString().slice(0, 10);
-    const batch = records.map(r => ({ ...r, upload_date: today }));
+    const batchId = `${today}_${Date.now()}`;
+    const batch = records.map(r => ({ ...r, upload_date: today, batch_id: batchId, file_name: fileName }));
 
-    // 500건씩 나눠서 업로드
     let total = 0;
     for (let i = 0; i < batch.length; i += 500) {
       const chunk = batch.slice(i, i + 500);
@@ -88,28 +115,29 @@ export default function JournalPage() {
         return;
       }
       total += chunk.length;
+      setMessage(`업로드 중... ${total}/${batch.length}건`);
     }
 
     setMessage(`${total}건 업로드 완료!`);
     setRecords([]);
+    setFileName("");
     setUploading(false);
     if (fileRef.current) fileRef.current.value = "";
-    loadDates();
+    loadBatches();
   }
 
-  async function handleViewDate(date) {
-    setSelectedDate(date);
+  async function handleViewBatch(batchId) {
+    setSelectedBatch(batchId);
     setViewLoading(true);
-    // 전체 데이터를 1000건씩 나눠서 가져오기
     let all = [], from = 0;
     while (true) {
-      const { data } = await supabase
-        .from("journals")
-        .select("*")
-        .eq("upload_date", date)
-        .order("entry_date")
-        .order("slip_no")
-        .range(from, from + 999);
+      let query = supabase.from("journals").select("*");
+      if (batchId === "__legacy__") {
+        query = query.is("batch_id", null);
+      } else {
+        query = query.eq("batch_id", batchId);
+      }
+      const { data } = await query.order("entry_date").order("slip_no").range(from, from + 999);
       if (!data || data.length === 0) break;
       all = all.concat(data);
       if (data.length < 1000) break;
@@ -119,9 +147,33 @@ export default function JournalPage() {
     setViewLoading(false);
   }
 
+  async function handleDelete(batchId) {
+    if (!confirm("이 업로드를 삭제하시겠습니까?")) return;
+    setDeleting(batchId);
+    // 1000건씩 삭제
+    while (true) {
+      let query = supabase.from("journals").delete();
+      if (batchId === "__legacy__") {
+        query = query.is("batch_id", null);
+      } else {
+        query = query.eq("batch_id", batchId);
+      }
+      const { data, error } = await query.select("id").limit(1000);
+      if (error) { alert(`삭제 실패: ${error.message}`); break; }
+      if (!data || data.length === 0) break;
+    }
+    setDeleting(null);
+    if (selectedBatch === batchId) {
+      setSelectedBatch(null);
+      setViewData([]);
+    }
+    loadBatches();
+  }
+
   const cardStyle = { background: "#11141c", borderRadius: 12, border: "1px solid #1e2130", padding: 24, marginBottom: 20 };
   const labelStyle = { fontSize: 13, color: "#4a4d5e", marginBottom: 8 };
   const btnStyle = { background: "linear-gradient(135deg,#7c5cfc,#4a9eff)", border: "none", color: "#fff", borderRadius: 8, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer" };
+  const delBtnStyle = { background: "transparent", border: "1px solid #ff6b6b", color: "#ff6b6b", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", marginLeft: 8 };
 
   return (
     <div style={{ maxWidth: 1000, margin: "0 auto", padding: "32px 24px" }}>
@@ -187,40 +239,46 @@ export default function JournalPage() {
       {/* 업로드 이력 */}
       <div style={cardStyle}>
         <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 16 }}>업로드 이력</div>
-        {dates.length === 0 ? (
+        {batches.length === 0 ? (
           <div style={{ fontSize: 13, color: "#4a4d5e" }}>아직 업로드된 분개장이 없습니다.</div>
         ) : (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {dates.map(([d, cnt]) => (
-              <button
-                key={d}
-                onClick={() => handleViewDate(d)}
-                style={{
-                  background: selectedDate === d ? "linear-gradient(135deg,#7c5cfc,#4a9eff)" : "#1a1d2a",
-                  border: selectedDate === d ? "none" : "1px solid #1e2130",
-                  color: selectedDate === d ? "#fff" : "#8a8ea0",
-                  borderRadius: 8,
-                  padding: "8px 16px",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                {d} ({cnt.toLocaleString()}건)
-              </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {batches.map(b => (
+              <div key={b.batch_id} style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                background: selectedBatch === b.batch_id ? "rgba(124,92,252,0.1)" : "#1a1d2a",
+                border: selectedBatch === b.batch_id ? "1px solid #7c5cfc" : "1px solid #1e2130",
+                borderRadius: 8, padding: "10px 16px", cursor: "pointer",
+              }}>
+                <div onClick={() => handleViewBatch(b.batch_id)} style={{ flex: 1, cursor: "pointer" }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: selectedBatch === b.batch_id ? "#fff" : "#8a8ea0" }}>
+                    {b.upload_date} — {b.file_name || "파일명 없음"}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#4a4d5e", marginTop: 2 }}>
+                    {b.count.toLocaleString()}건
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDelete(b.batch_id); }}
+                  disabled={deleting === b.batch_id}
+                  style={{ ...delBtnStyle, opacity: deleting === b.batch_id ? 0.5 : 1 }}
+                >
+                  {deleting === b.batch_id ? "삭제 중..." : "삭제"}
+                </button>
+              </div>
             ))}
           </div>
         )}
 
-        {/* 날짜별 데이터 조회 */}
-        {selectedDate && (
+        {/* 배치별 데이터 조회 */}
+        {selectedBatch && (
           <div style={{ marginTop: 20, overflowX: "auto" }}>
             {viewLoading ? (
               <div style={{ color: "#4a4d5e", fontSize: 13 }}>불러오는 중...</div>
             ) : (
               <>
                 <div style={{ fontSize: 13, color: "#8a8ea0", marginBottom: 12 }}>
-                  {selectedDate} 업로드 — <span style={{ color: "#4ecdc4" }}>{viewData.length}건</span>
+                  조회 결과 — <span style={{ color: "#4ecdc4" }}>{viewData.length.toLocaleString()}건</span>
                 </div>
                 <div style={{ maxHeight: 400, overflowY: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
