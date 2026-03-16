@@ -7,7 +7,7 @@ export default function SettlementPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const [plData, setPlData] = useState({ revenue: [], expense: [], revTotal: 0, expTotal: 0 });
+  const [plData, setPlData] = useState({ revenue: [], cogs: [], expense: [], revTotal: 0, cogsTotal: 0, grossProfit: 0, expTotal: 0 });
   const [prevRetained, setPrevRetained] = useState(0);
   const [loading, setLoading] = useState(false);
 
@@ -70,19 +70,22 @@ export default function SettlementPage() {
       acctMap[key].credit += Number(r.credit) || 0;
     });
 
-    const revenue = [], expense = [];
+    const revenue = [], cogs = [], expense = [];
     Object.values(acctMap).forEach(a => {
       const prefix = a.code?.substring(0, 2);
-      if (prefix === "04") revenue.push({ name: a.name, amount: a.credit });
+      if (a.code === "045100") cogs.push({ name: a.name, amount: a.debit });
+      else if (prefix === "04") revenue.push({ name: a.name, amount: a.credit });
       else if (prefix === "08") expense.push({ name: a.name, amount: a.debit });
     });
 
     const revTotal = revenue.reduce((s, r) => s + r.amount, 0);
+    const cogsTotal = cogs.reduce((s, r) => s + r.amount, 0);
+    const grossProfit = revTotal - cogsTotal;
     const expTotal = expense.reduce((s, r) => s + r.amount, 0);
-    setPlData({ revenue, expense, revTotal, expTotal });
+    setPlData({ revenue, cogs, expense, revTotal, cogsTotal, grossProfit, expTotal });
   }
 
-  const netIncome = plData.revTotal - plData.expTotal;
+  const netIncome = plData.grossProfit - plData.expTotal;
   const currentRetained = prevRetained + netIncome;
 
   return (
@@ -114,19 +117,27 @@ export default function SettlementPage() {
             {/* 매출 */}
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#4ecdc4", marginBottom: 10 }}>매출</div>
-              {plData.revenue.length === 0 ? (
+              {plData.revenue.length === 0 && plData.cogs.length === 0 ? (
                 <div style={{ fontSize: 12, color: "#4a4d5e" }}>데이터 없음</div>
               ) : (
-                plData.revenue.map((r, i) => (
-                  <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", fontSize: 13, borderBottom: "1px solid #1a1d2a" }}>
-                    <span style={{ color: "#8a8ea0" }}>{r.name}</span>
-                    <span style={{ color: "#4ecdc4", fontWeight: 600 }}>{r.amount.toLocaleString()}</span>
-                  </div>
-                ))
+                <>
+                  {plData.revenue.map((r, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", fontSize: 13, borderBottom: "1px solid #1a1d2a" }}>
+                      <span style={{ color: "#8a8ea0" }}>{r.name}</span>
+                      <span style={{ color: "#4ecdc4", fontWeight: 600 }}>{r.amount.toLocaleString()}</span>
+                    </div>
+                  ))}
+                  {plData.cogs.map((r, i) => (
+                    <div key={`c${i}`} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", fontSize: 13, borderBottom: "1px solid #1a1d2a" }}>
+                      <span style={{ color: "#8a8ea0" }}>{r.name}</span>
+                      <span style={{ color: "#ff6b6b", fontWeight: 600 }}>-{r.amount.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </>
               )}
               <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderTop: "1px solid #1e2130", marginTop: 4, fontSize: 14, fontWeight: 800 }}>
-                <span style={{ color: "#4ecdc4" }}>매출 합계</span>
-                <span style={{ color: "#4ecdc4" }}>{plData.revTotal.toLocaleString()}</span>
+                <span style={{ color: "#4ecdc4" }}>Gross Profit</span>
+                <span style={{ color: "#4ecdc4" }}>{plData.grossProfit.toLocaleString()}</span>
               </div>
             </div>
 
