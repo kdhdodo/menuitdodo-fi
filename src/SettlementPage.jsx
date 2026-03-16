@@ -10,6 +10,8 @@ export default function SettlementPage() {
 
   // 손익 데이터 (분개장 기반)
   const [plData, setPlData] = useState({ revenue: [], expense: [], revTotal: 0, expTotal: 0 });
+  // 부채 데이터
+  const [liabilities, setLiabilities] = useState({ items: [], total: 0 });
   // 일별 정산 목록
   const [dailyList, setDailyList] = useState([]);
   // 저장된 정산표
@@ -63,16 +65,20 @@ export default function SettlementPage() {
 
     // 매출: 04로 시작하는 계정 (매출 계정)
     // 비용: 08로 시작하는 계정 (판관비 등)
-    const revenue = [], expense = [];
+    // 부채: 02로 시작하는 계정 (미지급금, 선수금, 부가세예수금 등)
+    const revenue = [], expense = [], liabilityItems = [];
     Object.values(acctMap).forEach(a => {
       const prefix = a.code?.substring(0, 2);
       if (prefix === "04") revenue.push({ name: a.name, amount: a.credit });
       else if (prefix === "08") expense.push({ name: a.name, amount: a.debit });
+      else if (prefix === "02") liabilityItems.push({ name: a.name, amount: a.credit - a.debit });
     });
 
     const revTotal = revenue.reduce((s, r) => s + r.amount, 0);
     const expTotal = expense.reduce((s, r) => s + r.amount, 0);
+    const liabTotal = liabilityItems.reduce((s, r) => s + r.amount, 0);
     setPlData({ revenue, expense, revTotal, expTotal });
+    setLiabilities({ items: liabilityItems.filter(l => l.amount !== 0), total: liabTotal });
 
     // 일별 리스트
     const days = Object.entries(dayMap)
@@ -183,18 +189,45 @@ export default function SettlementPage() {
           )}
         </div>
 
-        {/* 오른쪽: 자산현황 */}
+        {/* 오른쪽: 자산·부채 */}
         <div style={{ background: "#11141c", borderRadius: 12, border: "1px solid #1e2130", padding: 24 }}>
-          <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 16 }}>자산현황</div>
+          <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 16 }}>자산·부채</div>
 
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#4a9eff", marginBottom: 8 }}>잔고</div>
-          <div style={{ fontSize: 13, color: "#4a4d5e", padding: "12px 0", borderBottom: "1px solid #1e2130" }}>잔고 탭에서 데이터를 등록하세요</div>
+          {/* 자산 */}
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#4a9eff", marginBottom: 8 }}>자산</div>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13, borderBottom: "1px solid #1a1d2a" }}>
+            <span style={{ color: "#8a8ea0" }}>잔고</span>
+            <span style={{ color: "#4a4d5e" }}>잔고 탭에서 등록</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13, borderBottom: "1px solid #1a1d2a" }}>
+            <span style={{ color: "#8a8ea0" }}>재고</span>
+            <span style={{ color: "#4a4d5e" }}>재고 탭에서 등록</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: "1px solid #1e2130", marginTop: 4, fontSize: 13, fontWeight: 700 }}>
+            <span style={{ color: "#4a9eff" }}>자산 합계</span>
+            <span style={{ color: "#4a4d5e" }}>—</span>
+          </div>
 
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#f59e0b", marginBottom: 8, marginTop: 16 }}>재고</div>
-          <div style={{ fontSize: 13, color: "#4a4d5e", padding: "12px 0", borderBottom: "1px solid #1e2130" }}>재고 탭에서 데이터를 등록하세요</div>
+          {/* 부채 */}
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#ff6b6b", marginBottom: 8, marginTop: 16 }}>부채</div>
+          {liabilities.items.length === 0 ? (
+            <div style={{ fontSize: 12, color: "#4a4d5e", marginBottom: 12 }}>데이터 없음</div>
+          ) : (
+            liabilities.items.map((l, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13, borderBottom: "1px solid #1a1d2a" }}>
+                <span style={{ color: "#8a8ea0" }}>{l.name}</span>
+                <span style={{ color: "#ff6b6b", fontWeight: 600 }}>{l.amount.toLocaleString()}</span>
+              </div>
+            ))
+          )}
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: "1px solid #1e2130", marginTop: 4, fontSize: 13, fontWeight: 700 }}>
+            <span style={{ color: "#ff6b6b" }}>부채 합계</span>
+            <span style={{ color: "#ff6b6b" }}>{liabilities.total.toLocaleString()}</span>
+          </div>
 
+          {/* 순자산 */}
           <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderTop: "2px solid #1e2130", marginTop: 12, fontSize: 15, fontWeight: 800 }}>
-            <span>자산 합계</span>
+            <span>순자산</span>
             <span style={{ color: "#4a4d5e" }}>—</span>
           </div>
         </div>
