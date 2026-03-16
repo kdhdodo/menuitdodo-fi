@@ -169,22 +169,77 @@ export default function SettlementPage() {
         </div>
       </div>
 
-      {/* 대사 (이익잉여금) */}
-      <div style={{ background: "#11141c", borderRadius: 12, border: "1px solid #1e2130", padding: 24 }}>
-        <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 20 }}>이익잉여금</div>
-        <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 14, borderBottom: "1px solid #1a1d2a" }}>
-          <span style={{ color: "#8a8ea0" }}>전기이월 이익잉여금</span>
-          <span style={{ color: "#e8eaf0", fontWeight: 600 }}>{loading ? "..." : prevRetained.toLocaleString()}</span>
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 14, borderBottom: "1px solid #1a1d2a" }}>
-          <span style={{ color: "#8a8ea0" }}>+ 당기순이익</span>
-          <span style={{ color: netIncome >= 0 ? "#4ecdc4" : "#ff6b6b", fontWeight: 600 }}>{netIncome.toLocaleString()}</span>
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", padding: "16px 0", borderTop: "2px solid #1e2130", marginTop: 8, fontSize: 18, fontWeight: 800 }}>
-          <span>이익잉여금</span>
-          <span style={{ color: "#7c5cfc" }}>{loading ? "..." : currentRetained.toLocaleString()}</span>
-        </div>
-      </div>
+      {/* 대사 */}
+      {(() => {
+        const bsResult = 0 + 0 - 0; // 재고 + 잔고 - 부채 (추후 연동)
+        const diff = Math.abs(currentRetained - bsResult);
+        const hasBsData = false; // 재고/잔고/부채 데이터 있을 때 true로
+        const isMatch = hasBsData && diff < 1;
+        return (
+          <div style={{ background: "#11141c", borderRadius: 12, border: `1px solid ${!hasBsData ? "#1e2130" : isMatch ? "rgba(78,205,196,0.3)" : "rgba(255,107,107,0.3)"}`, padding: 24 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 20 }}>대사</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 16, alignItems: "center" }}>
+              {/* 왼쪽: 이익잉여금 */}
+              <div style={{ background: "#0d0f14", borderRadius: 8, padding: 16 }}>
+                <div style={{ fontSize: 12, color: "#4a4d5e", marginBottom: 10 }}>이익잉여금</div>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13 }}>
+                  <span style={{ color: "#8a8ea0" }}>전기이월</span>
+                  <span style={{ color: "#e8eaf0", fontWeight: 600 }}>{loading ? "..." : prevRetained.toLocaleString()}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13 }}>
+                  <span style={{ color: "#8a8ea0" }}>+ 당기순이익</span>
+                  <span style={{ color: netIncome >= 0 ? "#4ecdc4" : "#ff6b6b", fontWeight: 600 }}>{netIncome.toLocaleString()}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: "1px solid #1e2130", marginTop: 4, fontSize: 15, fontWeight: 800 }}>
+                  <span>합계</span>
+                  <span style={{ color: "#7c5cfc" }}>{loading ? "..." : currentRetained.toLocaleString()}</span>
+                </div>
+              </div>
+
+              {/* 가운데 */}
+              <div style={{ fontSize: 28, fontWeight: 800, color: !hasBsData ? "#4a4d5e" : isMatch ? "#4ecdc4" : "#ff6b6b" }}>
+                {!hasBsData ? "=" : isMatch ? "=" : "≠"}
+              </div>
+
+              {/* 오른쪽: 재고 + 잔고 - 부채 */}
+              <div style={{ background: "#0d0f14", borderRadius: 8, padding: 16 }}>
+                <div style={{ fontSize: 12, color: "#4a4d5e", marginBottom: 10 }}>재무상태</div>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13 }}>
+                  <span style={{ color: "#8a8ea0" }}>재고</span>
+                  <span style={{ color: "#4a4d5e", fontSize: 11 }}>재고 탭에서 등록</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13 }}>
+                  <span style={{ color: "#8a8ea0" }}>잔고</span>
+                  <span style={{ color: "#4a4d5e", fontSize: 11 }}>잔고 탭에서 등록</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13 }}>
+                  <span style={{ color: "#8a8ea0" }}>- 부채</span>
+                  <span style={{ color: "#4a4d5e", fontSize: 11 }}>—</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: "1px solid #1e2130", marginTop: 4, fontSize: 15, fontWeight: 800 }}>
+                  <span>합계</span>
+                  <span style={{ color: "#4a4d5e" }}>—</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 차이 블럭 */}
+            <div style={{
+              marginTop: 16, padding: "16px 24px", borderRadius: 10, textAlign: "center",
+              background: !hasBsData ? "rgba(74,77,94,0.08)" : isMatch ? "rgba(78,205,196,0.08)" : "rgba(255,107,107,0.08)",
+              border: `1px solid ${!hasBsData ? "rgba(74,77,94,0.2)" : isMatch ? "rgba(78,205,196,0.3)" : "rgba(255,107,107,0.3)"}`,
+            }}>
+              <div style={{ fontSize: 12, color: "#4a4d5e", marginBottom: 4 }}>차이</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: !hasBsData ? "#4a4d5e" : isMatch ? "#4ecdc4" : "#ff6b6b" }}>
+                {!hasBsData ? "—" : isMatch ? "0" : diff.toLocaleString()}
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 700, marginTop: 4, color: !hasBsData ? "#4a4d5e" : isMatch ? "#4ecdc4" : "#ff6b6b" }}>
+                {!hasBsData ? "재고/잔고 데이터 입력 시 대사 가능" : isMatch ? "정상 — 대사 완료" : "오차 발생"}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
