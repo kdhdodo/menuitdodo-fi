@@ -196,192 +196,184 @@ export default function JournalPage() {
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
-      <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-        {/* 달력 */}
-        <div style={{ flex: "0 0 380px", background: "#11141c", borderRadius: 12, border: "1px solid #1e2130", padding: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-            <button onClick={prevMonth} style={navBtn}>&lt;</button>
-            <div style={{ fontSize: 18, fontWeight: 800 }}>{year}년 {month + 1}월</div>
-            <button onClick={nextMonth} style={navBtn}>&gt;</button>
-          </div>
-          {/* 요일 헤더 */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2, marginBottom: 4 }}>
-            {WEEKDAYS.map((w, i) => (
-              <div key={w} style={{ textAlign: "center", fontSize: 11, fontWeight: 600, color: i === 0 ? "#ff6b6b" : i === 6 ? "#4a9eff" : "#4a4d5e", padding: "4px 0" }}>{w}</div>
-            ))}
-          </div>
-          {/* 날짜 */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2 }}>
-            {days.map((day, i) => {
-              if (!day) return <div key={`e${i}`} />;
-              const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
-              const isSelected = selectedDate === dateStr;
-              const isToday = dateStr === todayStr;
-              const hasUpload = !!uploadedDates[dateStr];
-              const dayOfWeek = (i) % 7;
-              return (
-                <div
-                  key={i}
-                  onClick={() => handleDayClick(day)}
-                  style={{
-                    position: "relative",
-                    textAlign: "center",
-                    padding: "8px 0",
-                    borderRadius: 8,
-                    cursor: "pointer",
-                    fontSize: 14,
-                    fontWeight: isSelected ? 800 : 500,
-                    background: isSelected ? "linear-gradient(135deg,#7c5cfc,#4a9eff)" : isToday ? "rgba(124,92,252,0.1)" : "transparent",
-                    color: isSelected ? "#fff" : dayOfWeek === 0 ? "#ff6b6b" : dayOfWeek === 6 ? "#4a9eff" : "#e8eaf0",
-                    border: isToday && !isSelected ? "1px solid #7c5cfc" : "1px solid transparent",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  {day}
-                  {hasUpload && (
-                    <div style={{
-                      position: "absolute", bottom: 2, left: "50%", transform: "translateX(-50%)",
-                      width: 6, height: 6, borderRadius: "50%",
-                      background: isSelected ? "#fff" : "#4ecdc4",
-                    }} />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          {/* 범례 */}
-          <div style={{ display: "flex", gap: 16, marginTop: 16, fontSize: 11, color: "#4a4d5e" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ecdc4" }} /> 업로드 완료
-            </div>
-          </div>
+      {/* 달력 (위) */}
+      <div style={{ background: "#11141c", borderRadius: 12, border: "1px solid #1e2130", padding: 24, marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <button onClick={prevMonth} style={navBtn}>&lt;</button>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>{year}년 {month + 1}월</div>
+          <button onClick={nextMonth} style={navBtn}>&gt;</button>
         </div>
-
-        {/* 우측 패널 */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {!selectedDate ? (
-            <div style={{ background: "#11141c", borderRadius: 12, border: "1px solid #1e2130", padding: 48, textAlign: "center" }}>
-              <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.3 }}>📅</div>
-              <div style={{ fontSize: 14, color: "#4a4d5e" }}>날짜를 선택하세요</div>
-            </div>
-          ) : (
-            <div style={{ background: "#11141c", borderRadius: 12, border: "1px solid #1e2130", padding: 24 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                <div style={{ fontSize: 18, fontWeight: 800 }}>{selectedDate}</div>
-                {hasData && (
-                  <button onClick={handleDelete} disabled={deleting} style={{
-                    background: "transparent", border: "1px solid #ff6b6b", color: "#ff6b6b",
-                    borderRadius: 7, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer",
-                    opacity: deleting ? 0.5 : 1,
-                  }}>
-                    {deleting ? "삭제 중..." : "분개장 삭제"}
-                  </button>
+        {/* 요일 헤더 */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4, marginBottom: 4 }}>
+          {WEEKDAYS.map((w, i) => (
+            <div key={w} style={{ textAlign: "center", fontSize: 12, fontWeight: 600, color: i === 0 ? "#ff6b6b" : i === 6 ? "#4a9eff" : "#4a4d5e", padding: "6px 0" }}>{w}</div>
+          ))}
+        </div>
+        {/* 날짜 */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4 }}>
+          {days.map((day, i) => {
+            if (!day) return <div key={`e${i}`} />;
+            const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
+            const isSelected = selectedDate === dateStr;
+            const isToday = dateStr === todayStr;
+            const hasUpload = !!uploadedDates[dateStr];
+            const dayOfWeek = (i) % 7;
+            return (
+              <div
+                key={i}
+                onClick={() => handleDayClick(day)}
+                style={{
+                  position: "relative",
+                  textAlign: "center",
+                  padding: "10px 0",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: isSelected ? 800 : 500,
+                  background: isSelected ? "linear-gradient(135deg,#7c5cfc,#4a9eff)" : isToday ? "rgba(124,92,252,0.1)" : "transparent",
+                  color: isSelected ? "#fff" : dayOfWeek === 0 ? "#ff6b6b" : dayOfWeek === 6 ? "#4a9eff" : "#e8eaf0",
+                  border: isToday && !isSelected ? "1px solid #7c5cfc" : "1px solid transparent",
+                  transition: "all 0.15s",
+                }}
+              >
+                {day}
+                {hasUpload && (
+                  <div style={{
+                    position: "absolute", bottom: 3, left: "50%", transform: "translateX(-50%)",
+                    width: 6, height: 6, borderRadius: "50%",
+                    background: isSelected ? "#fff" : "#4ecdc4",
+                  }} />
                 )}
               </div>
-
-              {hasData ? (
-                /* 이미 업로드된 날짜 */
-                <>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, padding: "10px 14px", background: "rgba(78,205,196,0.08)", borderRadius: 8, border: "1px solid rgba(78,205,196,0.2)" }}>
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ecdc4" }} />
-                    <span style={{ fontSize: 13, color: "#4ecdc4", fontWeight: 600 }}>
-                      {uploadedDates[selectedDate].file_name || "파일명 없음"} — {uploadedDates[selectedDate].count.toLocaleString()}건
-                    </span>
-                  </div>
-                  {viewLoading ? (
-                    <div style={{ color: "#4a4d5e", fontSize: 13, padding: 20, textAlign: "center" }}>불러오는 중...</div>
-                  ) : (
-                    <div style={{ maxHeight: 500, overflowY: "auto", overflowX: "auto" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                        <thead>
-                          <tr style={{ borderBottom: "1px solid #1e2130", position: "sticky", top: 0, background: "#11141c" }}>
-                            {["일자", "전표번호", "구분", "계정과목", "차변", "대변", "적요", "거래처명"].map(h => (
-                              <th key={h} style={{ padding: "8px 6px", textAlign: "left", color: "#4a4d5e", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {viewData.map((r, i) => (
-                            <tr key={i} style={{ borderBottom: "1px solid #1a1d2a" }}>
-                              <td style={{ padding: "6px", whiteSpace: "nowrap" }}>{r.entry_date}</td>
-                              <td style={{ padding: "6px" }}>{r.slip_no}</td>
-                              <td style={{ padding: "6px", color: r.division === "차변" ? "#4ecdc4" : "#ff6b9d" }}>{r.division}</td>
-                              <td style={{ padding: "6px" }}>{r.account_name}</td>
-                              <td style={{ padding: "6px", textAlign: "right", color: "#4ecdc4" }}>{r.debit ? Number(r.debit).toLocaleString() : ""}</td>
-                              <td style={{ padding: "6px", textAlign: "right", color: "#ff6b9d" }}>{r.credit ? Number(r.credit).toLocaleString() : ""}</td>
-                              <td style={{ padding: "6px", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.summary}</td>
-                              <td style={{ padding: "6px", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.vendor_name}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </>
-              ) : (
-                /* 업로드 안 된 날짜 */
-                <>
-                  <div style={{ fontSize: 13, color: "#4a4d5e", marginBottom: 12 }}>이 날짜에 분개장이 없습니다. 엑셀 파일을 업로드하세요.</div>
-                  <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                    <input
-                      ref={fileRef}
-                      type="file"
-                      accept=".xlsx,.xls"
-                      onChange={handleFile}
-                      style={{ fontSize: 13, color: "#8a8ea0" }}
-                    />
-                    <button
-                      onClick={handleUpload}
-                      disabled={uploading || records.length === 0}
-                      style={{
-                        background: "linear-gradient(135deg,#7c5cfc,#4a9eff)", border: "none", color: "#fff",
-                        borderRadius: 8, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer",
-                        opacity: uploading || records.length === 0 ? 0.5 : 1,
-                      }}
-                    >
-                      {uploading ? "업로드 중..." : `업로드 (${records.length}건)`}
-                    </button>
-                  </div>
-                  {message && (
-                    <div style={{ marginTop: 12, fontSize: 13, color: message.includes("실패") ? "#ff6b6b" : "#4ecdc4" }}>
-                      {message}
-                    </div>
-                  )}
-                  {/* 미리보기 */}
-                  {records.length > 0 && (
-                    <div style={{ marginTop: 16, overflowX: "auto" }}>
-                      <div style={{ fontSize: 12, color: "#4a4d5e", marginBottom: 8 }}>미리보기 (상위 10건)</div>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                        <thead>
-                          <tr style={{ borderBottom: "1px solid #1e2130" }}>
-                            {["일자", "전표번호", "구분", "계정과목", "차변", "대변", "적요", "거래처명"].map(h => (
-                              <th key={h} style={{ padding: "8px 6px", textAlign: "left", color: "#4a4d5e", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {records.slice(0, 10).map((r, i) => (
-                            <tr key={i} style={{ borderBottom: "1px solid #1a1d2a" }}>
-                              <td style={{ padding: "6px", whiteSpace: "nowrap" }}>{r.entry_date}</td>
-                              <td style={{ padding: "6px" }}>{r.slip_no}</td>
-                              <td style={{ padding: "6px", color: r.division === "차변" ? "#4ecdc4" : "#ff6b9d" }}>{r.division}</td>
-                              <td style={{ padding: "6px" }}>{r.account_name}</td>
-                              <td style={{ padding: "6px", textAlign: "right", color: "#4ecdc4" }}>{r.debit ? r.debit.toLocaleString() : ""}</td>
-                              <td style={{ padding: "6px", textAlign: "right", color: "#ff6b9d" }}>{r.credit ? r.credit.toLocaleString() : ""}</td>
-                              <td style={{ padding: "6px", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.summary}</td>
-                              <td style={{ padding: "6px", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.vendor_name}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
+            );
+          })}
+        </div>
+        {/* 범례 */}
+        <div style={{ display: "flex", gap: 16, marginTop: 16, fontSize: 11, color: "#4a4d5e" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ecdc4" }} /> 업로드 완료
+          </div>
         </div>
       </div>
+
+      {/* 분개장 패널 (아래) */}
+      {!selectedDate ? (
+        <div style={{ background: "#11141c", borderRadius: 12, border: "1px solid #1e2130", padding: 48, textAlign: "center" }}>
+          <div style={{ fontSize: 14, color: "#4a4d5e" }}>날짜를 선택하세요</div>
+        </div>
+      ) : (
+        <div style={{ background: "#11141c", borderRadius: 12, border: "1px solid #1e2130", padding: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+            <div style={{ fontSize: 18, fontWeight: 800 }}>{selectedDate}</div>
+            {hasData && (
+              <button onClick={handleDelete} disabled={deleting} style={{
+                background: "transparent", border: "1px solid #ff6b6b", color: "#ff6b6b",
+                borderRadius: 7, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                opacity: deleting ? 0.5 : 1,
+              }}>
+                {deleting ? "삭제 중..." : "분개장 삭제"}
+              </button>
+            )}
+          </div>
+
+          {hasData ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, padding: "10px 14px", background: "rgba(78,205,196,0.08)", borderRadius: 8, border: "1px solid rgba(78,205,196,0.2)" }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ecdc4" }} />
+                <span style={{ fontSize: 13, color: "#4ecdc4", fontWeight: 600 }}>
+                  {uploadedDates[selectedDate].file_name || "파일명 없음"} — {uploadedDates[selectedDate].count.toLocaleString()}건
+                </span>
+              </div>
+              {viewLoading ? (
+                <div style={{ color: "#4a4d5e", fontSize: 13, padding: 20, textAlign: "center" }}>불러오는 중...</div>
+              ) : (
+                <div style={{ maxHeight: 500, overflowY: "auto", overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid #1e2130", position: "sticky", top: 0, background: "#11141c" }}>
+                        {["일자", "전표번호", "구분", "계정과목", "차변", "대변", "적요", "거래처명"].map(h => (
+                          <th key={h} style={{ padding: "8px 6px", textAlign: "left", color: "#4a4d5e", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {viewData.map((r, i) => (
+                        <tr key={i} style={{ borderBottom: "1px solid #1a1d2a" }}>
+                          <td style={{ padding: "6px", whiteSpace: "nowrap" }}>{r.entry_date}</td>
+                          <td style={{ padding: "6px" }}>{r.slip_no}</td>
+                          <td style={{ padding: "6px", color: r.division === "차변" ? "#4ecdc4" : "#ff6b9d" }}>{r.division}</td>
+                          <td style={{ padding: "6px" }}>{r.account_name}</td>
+                          <td style={{ padding: "6px", textAlign: "right", color: "#4ecdc4" }}>{r.debit ? Number(r.debit).toLocaleString() : ""}</td>
+                          <td style={{ padding: "6px", textAlign: "right", color: "#ff6b9d" }}>{r.credit ? Number(r.credit).toLocaleString() : ""}</td>
+                          <td style={{ padding: "6px", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.summary}</td>
+                          <td style={{ padding: "6px", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.vendor_name}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 13, color: "#4a4d5e", marginBottom: 12 }}>이 날짜에 분개장이 없습니다. 엑셀 파일을 업로드하세요.</div>
+              <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFile}
+                  style={{ fontSize: 13, color: "#8a8ea0" }}
+                />
+                <button
+                  onClick={handleUpload}
+                  disabled={uploading || records.length === 0}
+                  style={{
+                    background: "linear-gradient(135deg,#7c5cfc,#4a9eff)", border: "none", color: "#fff",
+                    borderRadius: 8, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer",
+                    opacity: uploading || records.length === 0 ? 0.5 : 1,
+                  }}
+                >
+                  {uploading ? "업로드 중..." : `업로드 (${records.length}건)`}
+                </button>
+              </div>
+              {message && (
+                <div style={{ marginTop: 12, fontSize: 13, color: message.includes("실패") ? "#ff6b6b" : "#4ecdc4" }}>
+                  {message}
+                </div>
+              )}
+              {records.length > 0 && (
+                <div style={{ marginTop: 16, overflowX: "auto" }}>
+                  <div style={{ fontSize: 12, color: "#4a4d5e", marginBottom: 8 }}>미리보기 (상위 10건)</div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid #1e2130" }}>
+                        {["일자", "전표번호", "구분", "계정과목", "차변", "대변", "적요", "거래처명"].map(h => (
+                          <th key={h} style={{ padding: "8px 6px", textAlign: "left", color: "#4a4d5e", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {records.slice(0, 10).map((r, i) => (
+                        <tr key={i} style={{ borderBottom: "1px solid #1a1d2a" }}>
+                          <td style={{ padding: "6px", whiteSpace: "nowrap" }}>{r.entry_date}</td>
+                          <td style={{ padding: "6px" }}>{r.slip_no}</td>
+                          <td style={{ padding: "6px", color: r.division === "차변" ? "#4ecdc4" : "#ff6b9d" }}>{r.division}</td>
+                          <td style={{ padding: "6px" }}>{r.account_name}</td>
+                          <td style={{ padding: "6px", textAlign: "right", color: "#4ecdc4" }}>{r.debit ? r.debit.toLocaleString() : ""}</td>
+                          <td style={{ padding: "6px", textAlign: "right", color: "#ff6b9d" }}>{r.credit ? r.credit.toLocaleString() : ""}</td>
+                          <td style={{ padding: "6px", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.summary}</td>
+                          <td style={{ padding: "6px", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.vendor_name}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
