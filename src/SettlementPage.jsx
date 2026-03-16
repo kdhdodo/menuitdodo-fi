@@ -12,6 +12,8 @@ export default function SettlementPage() {
   const [plData, setPlData] = useState({ revenue: [], expense: [], revTotal: 0, expTotal: 0 });
   // 부채 데이터
   const [liabilities, setLiabilities] = useState({ items: [], total: 0 });
+  // 자산 데이터 (분개장 기반)
+  const [assets, setAssets] = useState({ items: [], total: 0 });
   // 일별 정산 목록
   const [dailyList, setDailyList] = useState([]);
   // 저장된 정산표
@@ -66,19 +68,22 @@ export default function SettlementPage() {
     // 매출: 04로 시작하는 계정 (매출 계정)
     // 비용: 08로 시작하는 계정 (판관비 등)
     // 부채: 02로 시작하는 계정 (미지급금, 선수금, 부가세예수금 등)
-    const revenue = [], expense = [], liabilityItems = [];
+    const revenue = [], expense = [], liabilityItems = [], assetItems = [];
     Object.values(acctMap).forEach(a => {
       const prefix = a.code?.substring(0, 2);
       if (prefix === "04") revenue.push({ name: a.name, amount: a.credit });
       else if (prefix === "08") expense.push({ name: a.name, amount: a.debit });
       else if (a.code === "025300" || a.code === "025500" || a.code === "025900") liabilityItems.push({ name: a.name, amount: a.credit - a.debit });
+      else if (a.code === "010800" || a.code === "013100") assetItems.push({ name: a.name, amount: a.debit - a.credit });
     });
 
     const revTotal = revenue.reduce((s, r) => s + r.amount, 0);
     const expTotal = expense.reduce((s, r) => s + r.amount, 0);
     const liabTotal = liabilityItems.reduce((s, r) => s + r.amount, 0);
+    const assetTotal = assetItems.reduce((s, r) => s + r.amount, 0);
     setPlData({ revenue, expense, revTotal, expTotal });
     setLiabilities({ items: liabilityItems.filter(l => l.amount !== 0), total: liabTotal });
+    setAssets({ items: assetItems.filter(a => a.amount !== 0), total: assetTotal });
 
     // 일별 리스트
     const days = Object.entries(dayMap)
@@ -195,17 +200,23 @@ export default function SettlementPage() {
 
           {/* 자산 */}
           <div style={{ fontSize: 12, fontWeight: 700, color: "#4a9eff", marginBottom: 8 }}>자산</div>
+          {assets.items.map((a, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13, borderBottom: "1px solid #1a1d2a" }}>
+              <span style={{ color: "#8a8ea0" }}>{a.name}</span>
+              <span style={{ color: "#4a9eff", fontWeight: 600 }}>{a.amount.toLocaleString()}</span>
+            </div>
+          ))}
           <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13, borderBottom: "1px solid #1a1d2a" }}>
             <span style={{ color: "#8a8ea0" }}>잔고</span>
-            <span style={{ color: "#4a4d5e" }}>잔고 탭에서 등록</span>
+            <span style={{ color: "#4a4d5e", fontSize: 11 }}>잔고 탭에서 등록</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13, borderBottom: "1px solid #1a1d2a" }}>
             <span style={{ color: "#8a8ea0" }}>재고</span>
-            <span style={{ color: "#4a4d5e" }}>재고 탭에서 등록</span>
+            <span style={{ color: "#4a4d5e", fontSize: 11 }}>재고 탭에서 등록</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: "1px solid #1e2130", marginTop: 4, fontSize: 13, fontWeight: 700 }}>
             <span style={{ color: "#4a9eff" }}>자산 합계</span>
-            <span style={{ color: "#4a4d5e" }}>—</span>
+            <span style={{ color: "#4a9eff" }}>{assets.total.toLocaleString()}</span>
           </div>
 
           {/* 부채 */}
@@ -228,7 +239,7 @@ export default function SettlementPage() {
           {/* 순자산 */}
           <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderTop: "2px solid #1e2130", marginTop: 12, fontSize: 15, fontWeight: 800 }}>
             <span>순자산</span>
-            <span style={{ color: "#4a4d5e" }}>—</span>
+            <span style={{ color: (assets.total - liabilities.total) >= 0 ? "#4a9eff" : "#ff6b6b" }}>{(assets.total - liabilities.total).toLocaleString()}</span>
           </div>
         </div>
       </div>
