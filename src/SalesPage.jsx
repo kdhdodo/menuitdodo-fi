@@ -32,11 +32,12 @@ export default function SalesPage() {
   const [viewHeaders, setViewHeaders] = useState([]);
   const [viewLoading, setViewLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [weeklyData, setWeeklyData] = useState([]);
   const fileRef = useRef();
 
   const days = getCalendarDays(year, month);
 
-  useEffect(() => { loadMonth(); }, [year, month]);
+  useEffect(() => { loadMonth(); loadWeekly(); }, [year, month]);
 
   async function loadMonth() {
     const startDate = `${year}-${pad(month + 1)}-01`;
@@ -101,6 +102,43 @@ export default function SalesPage() {
     }
     setViewData(all);
     setViewLoading(false);
+  }
+
+  async function loadWeekly() {
+    const monthPrefix = `${year}-${pad(month + 1)}`;
+    let all = [], from = 0;
+    while (true) {
+      const { data } = await supabase
+        .from("sales")
+        .select("row_data")
+        .range(from, from + 999);
+      if (!data || data.length === 0) break;
+      all = all.concat(data);
+      if (data.length < 1000) break;
+      from += 1000;
+    }
+
+    // 주별 집계
+    const weeks = {};
+    all.forEach(r => {
+      const d = r.row_data;
+      if (!d) return;
+      const dateStr = d["발주일자"] || "";
+      if (!dateStr.startsWith(monthPrefix)) return;
+      const dt = new Date(dateStr);
+      if (isNaN(dt)) return;
+      // ISO week start (월요일 기준)
+      const day = dt.getDay() || 7;
+      const monday = new Date(dt);
+      monday.setDate(dt.getDate() - day + 1);
+      const weekKey = `${monday.getFullYear()}-${pad(monday.getMonth() + 1)}-${pad(monday.getDate())}`;
+      if (!weeks[weekKey]) weeks[weekKey] = { week: weekKey, amount: 0, count: 0 };
+      weeks[weekKey].amount += Number(d["금액"]) || 0;
+      weeks[weekKey].count++;
+    });
+
+    const sorted = Object.values(weeks).sort((a, b) => a.week.localeCompare(b.week));
+    setWeeklyData(sorted);
   }
 
   function applyHeader(raw, idx) {
@@ -302,6 +340,40 @@ export default function SalesPage() {
           </div>
         </div>
       </div>
+
+      {/* 주별 매출 차트 */}
+      {weeklyData.length > 0 && (() => {
+        const maxAmt = Math.max(...weeklyData.map(w => w.amount));
+        return (
+          <div style={{ background: "#11141c", borderRadius: 12, border: "1px solid #1e2130", padding: 24, marginBottom: 20 }}>
+            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 16 }}>주별 매출</div>
+            <div style={{ display: "flex", gap: 8, alignItems: "flex-end", height: 160 }}>
+              {weeklyData.map((w, i) => {
+                const pct = maxAmt > 0 ? (w.amount / maxAmt) * 100 : 0;
+                const weekStart = w.week.substring(5);
+                return (
+                  <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                    <div style={{ fontSize: 11, color: "#4ecdc4", fontWeight: 700 }}>
+                      {(w.amount / 10000).toFixed(0)}만
+                    </div>
+                    <div style={{
+                      width: "100%", maxWidth: 60, borderRadius: "6px 6px 0 0",
+                      height: `${Math.max(pct, 4)}%`,
+                      background: "linear-gradient(180deg, #7c5cfc, #4a9eff)",
+                      transition: "height 0.3s",
+                    }} />
+                    <div style={{ fontSize: 10, color: "#4a4d5e", whiteSpace: "nowrap" }}>{weekStart}~</div>
+                    <div style={{ fontSize: 10, color: "#4a4d5e" }}>{w.count}건</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end", fontSize: 13, color: "#8a8ea0" }}>
+              합계: <span style={{ color: "#4ecdc4", fontWeight: 700, marginLeft: 6 }}>{weeklyData.reduce((s, w) => s + w.amount, 0).toLocaleString()}원</span>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 영업 패널 */}
       {!selectedDate ? (
