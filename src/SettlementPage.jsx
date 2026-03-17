@@ -90,15 +90,14 @@ export default function SettlementPage() {
   }
 
   async function loadBalance() {
-    const startDate = `${year}-${pad(month)}-01`;
-    const endDate = `${year}-${pad(month)}-${new Date(year, month, 0).getDate()}`;
+    // tx_date 형식: "2026/01/02-11:38:13" → 월 prefix로 필터
+    const monthPrefix = `${year}/${pad(month)}`;
     let all = [], from = 0;
     while (true) {
       const { data } = await supabase
         .from("bank_transactions")
         .select("bank, account_no, balance, tx_date, id")
-        .gte("upload_date", startDate)
-        .lte("upload_date", endDate)
+        .like("tx_date", `${monthPrefix}%`)
         .order("id", { ascending: false })
         .range(from, from + 999);
       if (!data || data.length === 0) break;
