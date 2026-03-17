@@ -62,6 +62,12 @@ export default function DashboardPage() {
   }
 
   const maxAmt = weeklyData.length > 0 ? Math.max(...weeklyData.map(w => w.amount)) : 0;
+  const medianAmt = (() => {
+    if (weeklyData.length === 0) return 0;
+    const sorted = [...weeklyData].map(w => w.amount).sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+  })();
   const totalAmt = weeklyData.reduce((s, w) => s + w.amount, 0);
   const totalCnt = weeklyData.reduce((s, w) => s + w.count, 0);
 
@@ -101,21 +107,42 @@ export default function DashboardPage() {
           <div style={{ color: "#4a4d5e", fontSize: 13, padding: 40, textAlign: "center" }}>데이터 없음</div>
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <div style={{ display: "flex", gap: 3, alignItems: "flex-end", minWidth: weeklyData.length * 24, height: 220, padding: "0 4px" }}>
-              {weeklyData.map((w, i) => {
-                const pct = maxAmt > 0 ? (w.amount / maxAmt) * 100 : 0;
-                const isHigh = w.amount === maxAmt;
+            <div style={{ position: "relative", minWidth: weeklyData.length * 24, height: 220, padding: "0 4px" }}>
+              {/* 중간값 가로선 */}
+              {maxAmt > 0 && (() => {
+                const medianPct = (medianAmt / maxAmt) * 100;
+                const bottomPx = Math.max(medianPct * 1.8, 3);
                 return (
-                  <div key={i} style={{ flex: "0 0 auto", width: Math.max(16, Math.floor(900 / weeklyData.length)), display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }} title={`${w.week} (${w.monday}~)\n${w.amount.toLocaleString()}원\n${w.count}건`}>
+                  <>
                     <div style={{
-                      width: "100%", borderRadius: "4px 4px 0 0",
-                      height: `${Math.max(pct * 1.8, 3)}px`,
-                      background: isHigh ? "linear-gradient(180deg, #ff6b9d, #ff6b6b)" : "linear-gradient(180deg, #7c5cfc, #4a9eff)",
-                      transition: "height 0.3s",
+                      position: "absolute", left: 0, right: 0, bottom: bottomPx,
+                      borderTop: "1.5px dashed #ff6b9d", zIndex: 2,
                     }} />
-                  </div>
+                    <div style={{
+                      position: "absolute", right: 4, bottom: bottomPx + 4,
+                      fontSize: 10, color: "#ff6b9d", fontWeight: 700, zIndex: 2,
+                    }}>
+                      중간값 {(medianAmt / 10000).toFixed(0)}만
+                    </div>
+                  </>
                 );
-              })}
+              })()}
+              {/* 막대 */}
+              <div style={{ display: "flex", gap: 3, alignItems: "flex-end", height: "100%" }}>
+                {weeklyData.map((w, i) => {
+                  const pct = maxAmt > 0 ? (w.amount / maxAmt) * 100 : 0;
+                  return (
+                    <div key={i} style={{ flex: "0 0 auto", width: Math.max(16, Math.floor(900 / weeklyData.length)), display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }} title={`${w.week} (${w.monday}~)\n${w.amount.toLocaleString()}원\n${w.count}건`}>
+                      <div style={{
+                        width: "100%", borderRadius: "4px 4px 0 0",
+                        height: `${Math.max(pct * 1.8, 3)}px`,
+                        background: "linear-gradient(180deg, #7c5cfc, #4a9eff)",
+                        transition: "height 0.3s",
+                      }} />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
             {/* X축 라벨 */}
             <div style={{ display: "flex", gap: 3, minWidth: weeklyData.length * 24, padding: "8px 4px 0" }}>
@@ -140,7 +167,7 @@ export default function DashboardPage() {
               <div style={{ display: "flex", gap: 16, fontSize: 11, color: "#4a4d5e" }}>
                 <span>총 {weeklyData.length}주</span>
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: 2, background: "linear-gradient(135deg, #ff6b9d, #ff6b6b)" }} /> 최고 매출
+                  <div style={{ width: 12, height: 0, borderTop: "1.5px dashed #ff6b9d" }} /> 중간값
                 </div>
               </div>
               <div style={{ fontSize: 13, color: "#8a8ea0" }}>
