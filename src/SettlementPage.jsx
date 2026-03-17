@@ -7,7 +7,7 @@ export default function SettlementPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const [plData, setPlData] = useState({ revenue: [], cogs: [], expense: [], revTotal: 0, cogsTotal: 0, grossProfit: 0, expTotal: 0 });
+  const [plData, setPlData] = useState({ revenue: [], expense: [], revTotal: 0, cogsTotal: 0, grossProfit: 0, expTotal: 0 });
   const [prevRetained, setPrevRetained] = useState(0);
   const [balanceTotal, setBalanceTotal] = useState(null);
   const [balanceDetail, setBalanceDetail] = useState([]);
@@ -40,15 +40,15 @@ export default function SettlementPage() {
       if (data.length < 1000) break;
       from += 1000;
     }
-    let rev = 0, cogs = 0, exp = 0;
+    let rev = 0, exp = 0;
     all.forEach(r => {
       const code = r.account_code || "";
       const prefix = code.substring(0, 2);
-      if (code === "045100") cogs += Math.abs(Number(r.debit) || 0);
+      if (code === "045100") { /* 매출원가: 영업에서 가져올 예정 */ }
       else if (prefix === "04") rev += Number(r.credit) || 0;
       else if (prefix === "08") exp += Number(r.debit) || 0;
     });
-    setPrevRetained(rev - cogs - exp);
+    setPrevRetained(rev - exp);
   }
 
   async function loadPL() {
@@ -76,19 +76,19 @@ export default function SettlementPage() {
       acctMap[key].credit += Number(r.credit) || 0;
     });
 
-    const revenue = [], cogs = [], expense = [];
+    const revenue = [], expense = [];
     Object.values(acctMap).forEach(a => {
       const prefix = a.code?.substring(0, 2);
-      if (a.code === "045100") cogs.push({ name: a.name, amount: Math.abs(a.debit) });
+      if (a.code === "045100") { /* 매출원가: 영업에서 가져올 예정 */ }
       else if (prefix === "04") revenue.push({ name: a.name, amount: a.credit });
       else if (prefix === "08") expense.push({ name: a.name, amount: a.debit });
     });
 
     const revTotal = revenue.reduce((s, r) => s + r.amount, 0);
-    const cogsTotal = cogs.reduce((s, r) => s + r.amount, 0);
+    const cogsTotal = 0;
     const grossProfit = revTotal - cogsTotal;
     const expTotal = expense.reduce((s, r) => s + r.amount, 0);
-    setPlData({ revenue, cogs, expense, revTotal, cogsTotal, grossProfit, expTotal });
+    setPlData({ revenue, expense, revTotal, cogsTotal, grossProfit, expTotal });
   }
 
   async function loadBalance() {
@@ -191,23 +191,15 @@ export default function SettlementPage() {
             {/* 매출 */}
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#4ecdc4", marginBottom: 10 }}>매출</div>
-              {plData.revenue.length === 0 && plData.cogs.length === 0 ? (
+              {plData.revenue.length === 0 ? (
                 <div style={{ fontSize: 12, color: "#4a4d5e" }}>데이터 없음</div>
               ) : (
-                <>
-                  {plData.revenue.map((r, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", fontSize: 13, borderBottom: "1px solid #1a1d2a" }}>
-                      <span style={{ color: "#8a8ea0" }}>{r.name}</span>
-                      <span style={{ color: "#4ecdc4", fontWeight: 600 }}>{r.amount.toLocaleString()}</span>
-                    </div>
-                  ))}
-                  {plData.cogs.map((r, i) => (
-                    <div key={`c${i}`} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", fontSize: 13, borderBottom: "1px solid #1a1d2a" }}>
-                      <span style={{ color: "#8a8ea0" }}>{r.name}</span>
-                      <span style={{ color: "#ff6b6b", fontWeight: 600 }}>-{Math.abs(r.amount).toLocaleString()}</span>
-                    </div>
-                  ))}
-                </>
+                plData.revenue.map((r, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", fontSize: 13, borderBottom: "1px solid #1a1d2a" }}>
+                    <span style={{ color: "#8a8ea0" }}>{r.name}</span>
+                    <span style={{ color: "#4ecdc4", fontWeight: 600 }}>{r.amount.toLocaleString()}</span>
+                  </div>
+                ))
               )}
               <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderTop: "1px solid #1e2130", marginTop: 4, fontSize: 14, fontWeight: 800 }}>
                 <span style={{ color: "#4ecdc4" }}>Gross Profit</span>
