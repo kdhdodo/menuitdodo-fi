@@ -114,12 +114,17 @@ export default function SalesPage() {
         const raw = XLSX.utils.sheet_to_json(ws, { header: 1 });
         if (raw.length === 0) { setMessage("빈 파일입니다"); return; }
 
+        // 헤더 행 탐지: 문자열 비율이 가장 높고 셀이 3개 이상인 행
         let headerIdx = 0;
-        for (let i = 0; i < Math.min(raw.length, 10); i++) {
-          if (raw[i] && raw[i].filter(c => c != null && c !== "").length >= 3) {
-            headerIdx = i;
-            break;
-          }
+        let bestScore = -1;
+        for (let i = 0; i < Math.min(raw.length, 15); i++) {
+          const row = raw[i];
+          if (!row) continue;
+          const filled = row.filter(c => c != null && c !== "");
+          if (filled.length < 3) continue;
+          const strCount = filled.filter(c => typeof c === "string" && isNaN(Number(c))).length;
+          const score = strCount * 2 + filled.length;
+          if (score > bestScore) { bestScore = score; headerIdx = i; }
         }
 
         const h = raw[headerIdx].map((c, i) => c != null && c !== "" ? String(c).trim() : `열${i + 1}`);
