@@ -201,6 +201,10 @@ export default function SettlementPage() {
                   </div>
                 ))
               )}
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", fontSize: 13, borderBottom: "1px solid #1a1d2a" }}>
+                <span style={{ color: "#8a8ea0" }}>상품매출원가</span>
+                <span style={{ color: "#ff6b6b", fontWeight: 600 }}>{plData.cogsTotal ? `-${plData.cogsTotal.toLocaleString()}` : "—"}</span>
+              </div>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderTop: "1px solid #1e2130", marginTop: 4, fontSize: 14, fontWeight: 800 }}>
                 <span style={{ color: "#4ecdc4" }}>Gross Profit</span>
                 <span style={{ color: "#4ecdc4" }}>{plData.grossProfit.toLocaleString()}</span>
