@@ -40,13 +40,15 @@ export default function SettlementPage() {
       if (data.length < 1000) break;
       from += 1000;
     }
-    let rev = 0, exp = 0;
+    let rev = 0, cogs = 0, exp = 0;
     all.forEach(r => {
-      const prefix = r.account_code?.substring(0, 2);
-      if (prefix === "04") rev += Number(r.credit) || 0;
+      const code = r.account_code || "";
+      const prefix = code.substring(0, 2);
+      if (code === "045100") cogs += Number(r.debit) || 0;
+      else if (prefix === "04") rev += Number(r.credit) || 0;
       else if (prefix === "08") exp += Number(r.debit) || 0;
     });
-    setPrevRetained(rev - exp);
+    setPrevRetained(rev - cogs - exp);
   }
 
   async function loadPL() {
