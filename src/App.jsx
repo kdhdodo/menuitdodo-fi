@@ -4,6 +4,7 @@ import Login from "./Login";
 import JournalPage from "./JournalPage";
 import BalancePage from "./BalancePage";
 import InventoryPage from "./InventoryPage";
+import SalesPage from "./SalesPage";
 import SettlementPage from "./SettlementPage";
 import AdminPage from "./AdminPage";
 
@@ -13,6 +14,7 @@ const TABS = [
   { key: "journal", label: "분개장" },
   { key: "balance", label: "잔고" },
   { key: "inventory", label: "재고" },
+  { key: "sales", label: "영업" },
   { key: "settlement", label: "정산" },
 ];
 
@@ -109,6 +111,7 @@ export default function App() {
       {view === "user" && tab === "journal" && <JournalPage />}
       {view === "user" && tab === "balance" && <BalancePage />}
       {view === "user" && tab === "inventory" && <InventoryPage />}
+      {view === "user" && tab === "sales" && <SalesPage />}
       {view === "user" && tab === "settlement" && <SettlementPage />}
       {view === "admin" && <AdminPage />}
     </div>
