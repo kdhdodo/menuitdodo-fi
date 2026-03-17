@@ -106,16 +106,17 @@ export default function BalancePage() {
         const ws = wb.Sheets[wb.SheetNames[0]];
         const raw = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-        // 헤더 행 탐지: 문자열 비율이 가장 높고 셀이 3개 이상인 행
+        // 헤더 행 탐지: 숫자 없고 문자열 비율 높은 행
         let headerIdx = 0;
         let bestScore = -1;
-        for (let i = 0; i < Math.min(raw.length, 15); i++) {
+        for (let i = 0; i < Math.min(raw.length, 20); i++) {
           const row = raw[i];
           if (!row) continue;
           const filled = row.filter(c => c != null && c !== "");
           if (filled.length < 3) continue;
-          const strCount = filled.filter(c => typeof c === "string" && isNaN(Number(c))).length;
-          const score = strCount * 2 + filled.length;
+          const numCount = filled.filter(c => typeof c === "number").length;
+          const strCount = filled.filter(c => typeof c === "string").length;
+          const score = (strCount - numCount * 3) * 10 + filled.length;
           if (score > bestScore) { bestScore = score; headerIdx = i; }
         }
 
