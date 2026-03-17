@@ -42,10 +42,14 @@ export default function SettlementPage() {
       if (data.length < 1000) break;
       from += 1000;
     }
-    let exp = 0;
+    let exp = 0, adRev = 0;
     all.forEach(r => {
-      const prefix = (r.account_code || "").substring(0, 2);
+      const code = r.account_code || "";
+      const prefix = code.substring(0, 2);
       if (prefix === "08") exp += Number(r.debit) || 0;
+      else if (prefix === "04" && code !== "045100" && code !== "040100") {
+        adRev += Number(r.credit) || 0;
+      }
     });
 
     // 매출: 영업(sales) - 전월까지
@@ -70,7 +74,7 @@ export default function SettlementPage() {
       }
     });
 
-    setPrevRetained(rev - exp);
+    setPrevRetained(rev + adRev - exp);
   }
 
   async function loadPL() {
@@ -93,7 +97,7 @@ export default function SettlementPage() {
       from += 1000;
     }
 
-    const expense = [];
+    const expense = [], adRevenue = [];
     const acctMap = {};
     all.forEach(r => {
       const key = r.account_code + "_" + r.account_name;
@@ -104,6 +108,10 @@ export default function SettlementPage() {
     Object.values(acctMap).forEach(a => {
       const prefix = a.code?.substring(0, 2);
       if (prefix === "08") expense.push({ name: a.name, amount: a.debit });
+      else if (prefix === "04" && a.code !== "045100" && a.code !== "040100") {
+        // 광고수입 등 기타 매출 (상품매출 040100은 영업에서 대체)
+        if (a.credit > 0) adRevenue.push({ name: a.name, amount: a.credit });
+      }
     });
 
     // 매출: 영업(sales) 테이블에서
@@ -129,7 +137,11 @@ export default function SettlementPage() {
       }
     });
 
-    const revenue = revTotal > 0 ? [{ name: "영업매출", amount: revTotal }] : [];
+    const adTotal = adRevenue.reduce((s, r) => s + r.amount, 0);
+    const revenue = [];
+    if (revTotal > 0) revenue.push({ name: "영업매출", amount: revTotal });
+    adRevenue.forEach(r => revenue.push(r));
+    revTotal += adTotal;
     const cogsTotal = 0;
     const grossProfit = revTotal - cogsTotal;
     const expTotal = expense.reduce((s, r) => s + r.amount, 0);
