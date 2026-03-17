@@ -9,13 +9,15 @@ export default function SettlementPage() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [plData, setPlData] = useState({ revenue: [], cogs: [], expense: [], revTotal: 0, cogsTotal: 0, grossProfit: 0, expTotal: 0 });
   const [prevRetained, setPrevRetained] = useState(0);
+  const [balanceTotal, setBalanceTotal] = useState(null);
+  const [balanceDetail, setBalanceDetail] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => { loadAll(); }, [year, month]);
 
   async function loadAll() {
     setLoading(true);
-    await Promise.all([loadPL(), loadPrevRetained()]);
+    await Promise.all([loadPL(), loadPrevRetained(), loadBalance()]);
     setLoading(false);
   }
 
@@ -83,6 +85,40 @@ export default function SettlementPage() {
     const grossProfit = revTotal - cogsTotal;
     const expTotal = expense.reduce((s, r) => s + r.amount, 0);
     setPlData({ revenue, cogs, expense, revTotal, cogsTotal, grossProfit, expTotal });
+  }
+
+  async function loadBalance() {
+    const startDate = `${year}-${pad(month)}-01`;
+    const endDate = `${year}-${pad(month)}-${new Date(year, month, 0).getDate()}`;
+    let all = [], from = 0;
+    while (true) {
+      const { data } = await supabase
+        .from("bank_transactions")
+        .select("bank, account_no, balance, tx_date, id")
+        .gte("upload_date", startDate)
+        .lte("upload_date", endDate)
+        .order("id", { ascending: false })
+        .range(from, from + 999);
+      if (!data || data.length === 0) break;
+      all = all.concat(data);
+      if (data.length < 1000) break;
+      from += 1000;
+    }
+    if (all.length === 0) {
+      setBalanceTotal(null);
+      setBalanceDetail([]);
+      return;
+    }
+    // 계좌별 마지막 잔액 (가장 큰 id = 가장 마지막 거래)
+    const acctMap = {};
+    all.forEach(r => {
+      const key = (r.bank || "") + "_" + (r.account_no || "default");
+      if (!acctMap[key]) acctMap[key] = { bank: r.bank || "기타", account_no: r.account_no || "", balance: Number(r.balance) || 0 };
+    });
+    const details = Object.values(acctMap);
+    const total = details.reduce((s, d) => s + d.balance, 0);
+    setBalanceDetail(details);
+    setBalanceTotal(total);
   }
 
   const netIncome = plData.grossProfit - plData.expTotal;
@@ -171,9 +207,10 @@ export default function SettlementPage() {
 
       {/* 정산 */}
       {(() => {
-        const bsResult = 0 + 0 - 0; // 재고 + 잔고 - 부채 (추후 연동)
+        const hasBalance = balanceTotal != null;
+        const bsResult = 0 + (balanceTotal || 0) - 0; // 재고 + 잔고 - 부채
         const diff = Math.abs(currentRetained - bsResult);
-        const hasBsData = false; // 재고/잔고/부채 데이터 있을 때 true로
+        const hasBsData = hasBalance;
         const isMatch = hasBsData && diff < 1;
         return (
           <div style={{ background: "#11141c", borderRadius: 12, border: `1px solid ${!hasBsData ? "#1e2130" : isMatch ? "rgba(78,205,196,0.3)" : "rgba(255,107,107,0.3)"}`, padding: 24 }}>
@@ -208,17 +245,27 @@ export default function SettlementPage() {
                   <span style={{ color: "#8a8ea0" }}>재고</span>
                   <span style={{ color: "#4a4d5e", fontSize: 11 }}>재고 탭에서 등록</span>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13, borderBottom: "1px solid #1a1d2a" }}>
                   <span style={{ color: "#8a8ea0" }}>잔고</span>
-                  <span style={{ color: "#4a4d5e", fontSize: 11 }}>잔고 탭에서 등록</span>
+                  {hasBalance ? (
+                    <span style={{ color: "#4ecdc4", fontWeight: 600 }}>{balanceTotal.toLocaleString()}</span>
+                  ) : (
+                    <span style={{ color: "#4a4d5e", fontSize: 11 }}>잔고 탭에서 등록</span>
+                  )}
                 </div>
+                {hasBalance && balanceDetail.length > 0 && balanceDetail.map((d, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "3px 0 3px 12px", fontSize: 11 }}>
+                    <span style={{ color: "#4a4d5e" }}>{d.bank}{d.account_no ? ` ${d.account_no}` : ""}</span>
+                    <span style={{ color: "#8a8ea0" }}>{d.balance.toLocaleString()}</span>
+                  </div>
+                ))}
                 <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13 }}>
                   <span style={{ color: "#8a8ea0" }}>- 부채</span>
                   <span style={{ color: "#4a4d5e", fontSize: 11 }}>—</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: "1px solid #1e2130", marginTop: 4, fontSize: 15, fontWeight: 800 }}>
                   <span>합계</span>
-                  <span style={{ color: "#4a4d5e" }}>—</span>
+                  <span style={{ color: hasBsData ? "#7c5cfc" : "#4a4d5e" }}>{hasBsData ? bsResult.toLocaleString() : "—"}</span>
                 </div>
               </div>
             </div>
