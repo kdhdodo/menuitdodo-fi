@@ -152,7 +152,8 @@ export default function SettlementPage() {
       // 부채는 대변 증가, 차변 감소
       acctMap[key].amount += (Number(r.credit) || 0) - (Number(r.debit) || 0);
     });
-    const details = Object.values(acctMap).filter(a => Math.abs(a.amount) >= 1).sort((a, b) => b.amount - a.amount);
+    const EXCLUDE = ["임차보증금"];
+    const details = Object.values(acctMap).filter(a => Math.abs(a.amount) >= 1 && !EXCLUDE.some(ex => a.name.includes(ex))).sort((a, b) => b.amount - a.amount);
     const total = details.reduce((s, d) => s + d.amount, 0);
     setLiabilityDetail(details);
     setLiabilityTotal(total);
