@@ -27,6 +27,8 @@ export default function SettlementPage() {
     if (month === 1) { setPrevRetained(0); return; }
     const startDate = `${year}-01-01`;
     const endDate = `${year}-${pad(month - 1)}-${new Date(year, month - 1, 0).getDate()}`;
+
+    // 비용: 분개장
     let all = [], from = 0;
     while (true) {
       const { data } = await supabase
@@ -40,20 +42,43 @@ export default function SettlementPage() {
       if (data.length < 1000) break;
       from += 1000;
     }
-    let rev = 0, exp = 0;
+    let exp = 0;
     all.forEach(r => {
-      const code = r.account_code || "";
-      const prefix = code.substring(0, 2);
-      if (code === "045100") { /* 매출원가: 영업에서 가져올 예정 */ }
-      else if (prefix === "04") rev += Number(r.credit) || 0;
-      else if (prefix === "08") exp += Number(r.debit) || 0;
+      const prefix = (r.account_code || "").substring(0, 2);
+      if (prefix === "08") exp += Number(r.debit) || 0;
     });
+
+    // 매출: 영업(sales) - 전월까지
+    let salesAll = [], sf = 0;
+    while (true) {
+      const { data } = await supabase
+        .from("sales")
+        .select("row_data")
+        .range(sf, sf + 999);
+      if (!data || data.length === 0) break;
+      salesAll = salesAll.concat(data);
+      if (data.length < 1000) break;
+      sf += 1000;
+    }
+    let rev = 0;
+    salesAll.forEach(r => {
+      const d = r.row_data;
+      if (!d) return;
+      const dateStr = d["발주일자"] || "";
+      if (dateStr >= startDate && dateStr <= endDate) {
+        rev += Number(d["금액"]) || 0;
+      }
+    });
+
     setPrevRetained(rev - exp);
   }
 
   async function loadPL() {
     const startDate = `${year}-${pad(month)}-01`;
     const endDate = `${year}-${pad(month)}-${new Date(year, month, 0).getDate()}`;
+    const monthPrefix = `${year}-${pad(month)}`;
+
+    // 비용: 분개장에서
     let all = [], from = 0;
     while (true) {
       const { data } = await supabase
@@ -68,6 +93,7 @@ export default function SettlementPage() {
       from += 1000;
     }
 
+    const expense = [];
     const acctMap = {};
     all.forEach(r => {
       const key = r.account_code + "_" + r.account_name;
@@ -75,16 +101,35 @@ export default function SettlementPage() {
       acctMap[key].debit += Number(r.debit) || 0;
       acctMap[key].credit += Number(r.credit) || 0;
     });
-
-    const revenue = [], expense = [];
     Object.values(acctMap).forEach(a => {
       const prefix = a.code?.substring(0, 2);
-      if (a.code === "045100") { /* 매출원가: 영업에서 가져올 예정 */ }
-      else if (prefix === "04") revenue.push({ name: a.name, amount: a.credit });
-      else if (prefix === "08") expense.push({ name: a.name, amount: a.debit });
+      if (prefix === "08") expense.push({ name: a.name, amount: a.debit });
     });
 
-    const revTotal = revenue.reduce((s, r) => s + r.amount, 0);
+    // 매출: 영업(sales) 테이블에서
+    let salesAll = [], sf = 0;
+    while (true) {
+      const { data } = await supabase
+        .from("sales")
+        .select("row_data")
+        .range(sf, sf + 999);
+      if (!data || data.length === 0) break;
+      salesAll = salesAll.concat(data);
+      if (data.length < 1000) break;
+      sf += 1000;
+    }
+
+    let revTotal = 0;
+    salesAll.forEach(r => {
+      const d = r.row_data;
+      if (!d) return;
+      const dateStr = d["발주일자"] || "";
+      if (dateStr.startsWith(monthPrefix)) {
+        revTotal += Number(d["금액"]) || 0;
+      }
+    });
+
+    const revenue = revTotal > 0 ? [{ name: "영업매출", amount: revTotal }] : [];
     const cogsTotal = 0;
     const grossProfit = revTotal - cogsTotal;
     const expTotal = expense.reduce((s, r) => s + r.amount, 0);
