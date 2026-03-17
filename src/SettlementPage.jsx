@@ -11,13 +11,15 @@ export default function SettlementPage() {
   const [prevRetained, setPrevRetained] = useState(0);
   const [balanceTotal, setBalanceTotal] = useState(null);
   const [balanceDetail, setBalanceDetail] = useState([]);
+  const [liabilityTotal, setLiabilityTotal] = useState(0);
+  const [liabilityDetail, setLiabilityDetail] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => { loadAll(); }, [year, month]);
 
   async function loadAll() {
     setLoading(true);
-    await Promise.all([loadPL(), loadPrevRetained(), loadBalance()]);
+    await Promise.all([loadPL(), loadPrevRetained(), loadBalance(), loadLiabilities()]);
     setLoading(false);
   }
 
@@ -121,6 +123,40 @@ export default function SettlementPage() {
     setBalanceTotal(total);
   }
 
+  async function loadLiabilities() {
+    // 부채는 누적 잔액 (기초~해당월말)
+    const endDate = `${year}-${pad(month)}-${new Date(year, month, 0).getDate()}`;
+    let all = [], from = 0;
+    while (true) {
+      const { data } = await supabase
+        .from("journals")
+        .select("account_code, account_name, debit, credit")
+        .like("account_code", "02%")
+        .lte("entry_date", endDate)
+        .range(from, from + 999);
+      if (!data || data.length === 0) break;
+      all = all.concat(data);
+      if (data.length < 1000) break;
+      from += 1000;
+    }
+    if (all.length === 0) {
+      setLiabilityTotal(0);
+      setLiabilityDetail([]);
+      return;
+    }
+    const acctMap = {};
+    all.forEach(r => {
+      const key = r.account_code + "_" + r.account_name;
+      if (!acctMap[key]) acctMap[key] = { code: r.account_code, name: r.account_name, amount: 0 };
+      // 부채는 대변 증가, 차변 감소
+      acctMap[key].amount += (Number(r.credit) || 0) - (Number(r.debit) || 0);
+    });
+    const details = Object.values(acctMap).filter(a => Math.abs(a.amount) >= 1).sort((a, b) => b.amount - a.amount);
+    const total = details.reduce((s, d) => s + d.amount, 0);
+    setLiabilityDetail(details);
+    setLiabilityTotal(total);
+  }
+
   const netIncome = plData.grossProfit - plData.expTotal;
   const currentRetained = prevRetained + netIncome;
 
@@ -208,9 +244,10 @@ export default function SettlementPage() {
       {/* 정산 */}
       {(() => {
         const hasBalance = balanceTotal != null;
-        const bsResult = 0 + (balanceTotal || 0) - 0; // 재고 + 잔고 - 부채
+        const hasLiability = liabilityDetail.length > 0;
+        const bsResult = 0 + (balanceTotal || 0) - liabilityTotal; // 재고 + 잔고 - 부채
         const diff = Math.abs(currentRetained - bsResult);
-        const hasBsData = hasBalance;
+        const hasBsData = hasBalance || hasLiability;
         const isMatch = hasBsData && diff < 1;
         return (
           <div style={{ background: "#11141c", borderRadius: 12, border: `1px solid ${!hasBsData ? "#1e2130" : isMatch ? "rgba(78,205,196,0.3)" : "rgba(255,107,107,0.3)"}`, padding: 24 }}>
@@ -259,10 +296,20 @@ export default function SettlementPage() {
                     <span style={{ color: "#8a8ea0" }}>{d.balance.toLocaleString()}</span>
                   </div>
                 ))}
-                <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13, borderBottom: hasLiability ? "1px solid #1a1d2a" : "none" }}>
                   <span style={{ color: "#8a8ea0" }}>- 부채</span>
-                  <span style={{ color: "#4a4d5e", fontSize: 11 }}>—</span>
+                  {hasLiability ? (
+                    <span style={{ color: "#ff6b9d", fontWeight: 600 }}>{liabilityTotal.toLocaleString()}</span>
+                  ) : (
+                    <span style={{ color: "#4a4d5e", fontSize: 11 }}>—</span>
+                  )}
                 </div>
+                {hasLiability && liabilityDetail.map((d, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "3px 0 3px 12px", fontSize: 11 }}>
+                    <span style={{ color: "#4a4d5e" }}>{d.name}</span>
+                    <span style={{ color: "#8a8ea0" }}>{d.amount.toLocaleString()}</span>
+                  </div>
+                ))}
                 <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: "1px solid #1e2130", marginTop: 4, fontSize: 15, fontWeight: 800 }}>
                   <span>합계</span>
                   <span style={{ color: hasBsData ? "#7c5cfc" : "#4a4d5e" }}>{hasBsData ? bsResult.toLocaleString() : "—"}</span>
