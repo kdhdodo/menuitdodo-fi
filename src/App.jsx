@@ -6,6 +6,7 @@ import BalancePage from "./BalancePage";
 import InventoryPage from "./InventoryPage";
 import SalesPage from "./SalesPage";
 import SettlementPage from "./SettlementPage";
+import DashboardPage from "./DashboardPage";
 import AdminPage from "./AdminPage";
 
 const FONT = "'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif";
@@ -16,6 +17,7 @@ const TABS = [
   { key: "inventory", label: "재고" },
   { key: "sales", label: "영업" },
   { key: "settlement", label: "정산" },
+  { key: "dashboard", label: "대시보드" },
 ];
 
 export default function App() {
@@ -113,6 +115,7 @@ export default function App() {
       {view === "user" && tab === "inventory" && <InventoryPage />}
       {view === "user" && tab === "sales" && <SalesPage />}
       {view === "user" && tab === "settlement" && <SettlementPage />}
+      {view === "user" && tab === "dashboard" && <DashboardPage />}
       {view === "admin" && <AdminPage />}
     </div>
   );
