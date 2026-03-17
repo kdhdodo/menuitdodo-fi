@@ -139,35 +139,41 @@ export default function SalesPage() {
 
         setRawRows(raw);
 
-        // 헤더 행 자동 탐지: 숫자 셀 0개인 행 우선
-        let detected = 0;
-        let bestFilled = 0;
-        for (let i = 0; i < Math.min(raw.length, 20); i++) {
+        // 고정 헤더: 발주현황 컬럼명으로 매칭
+        const FIXED_HEADERS = ["회사 구분","업무구분","SAP PO번호","PO항목","발주일자","품목코드","품목명","규격","단위","발주수량","통화","단가","금액","작성자이","저장위치","구매요청번호","구매요청항목","구매담당자","연락처담당자","상호명"];
+
+        // 고정 헤더와 일치하는 행 찾기
+        let detected = -1;
+        for (let i = 0; i < Math.min(raw.length, 30); i++) {
           const row = raw[i];
           if (!row) continue;
-          const filled = row.filter(c => c != null && c !== "");
-          if (filled.length < 3) continue;
-          const numCount = filled.filter(c => typeof c === "number").length;
-          if (numCount === 0 && filled.length > bestFilled) {
-            bestFilled = filled.length;
-            detected = i;
-          }
+          const cells = row.map(c => c != null ? String(c).trim() : "");
+          const matchCount = FIXED_HEADERS.filter(h => cells.includes(h)).length;
+          if (matchCount >= 5) { detected = i; break; }
         }
-        if (bestFilled === 0) {
-          let bestScore = -Infinity;
+
+        if (detected >= 0) {
+          // 고정 헤더 매칭 성공
+          setHeaderIdx(detected);
+          applyHeader(raw, detected);
+        } else {
+          // fallback: 셀 수 가장 많은 순수 문자열 행
+          detected = 0;
+          let bestFilled = 0;
           for (let i = 0; i < Math.min(raw.length, 20); i++) {
             const row = raw[i];
             if (!row) continue;
             const filled = row.filter(c => c != null && c !== "");
             if (filled.length < 3) continue;
             const numCount = filled.filter(c => typeof c === "number").length;
-            const score = filled.length - numCount * 5;
-            if (score > bestScore) { bestScore = score; detected = i; }
+            if (numCount === 0 && filled.length > bestFilled) {
+              bestFilled = filled.length;
+              detected = i;
+            }
           }
+          setHeaderIdx(detected);
+          applyHeader(raw, detected);
         }
-
-        setHeaderIdx(detected);
-        applyHeader(raw, detected);
       } catch (err) {
         setMessage(`파싱 실패: ${err.message}`);
       }
