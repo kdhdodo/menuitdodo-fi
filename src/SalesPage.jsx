@@ -23,6 +23,8 @@ export default function SalesPage() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [records, setRecords] = useState([]);
   const [headers, setHeaders] = useState([]);
+  const [rawRows, setRawRows] = useState([]);
+  const [headerIdx, setHeaderIdx] = useState(0);
   const [fileName, setFileName] = useState("");
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState(null);
@@ -101,6 +103,27 @@ export default function SalesPage() {
     setViewLoading(false);
   }
 
+  function applyHeader(raw, idx) {
+    const h = raw[idx].map((c, i) => c != null && c !== "" ? String(c).trim() : `열${i + 1}`);
+    const data = [];
+    for (let i = idx + 1; i < raw.length; i++) {
+      const r = raw[i];
+      if (!r || r.every(c => c == null || c === "")) continue;
+      const row = {};
+      h.forEach((col, j) => { row[col] = r[j] != null ? r[j] : ""; });
+      data.push(row);
+    }
+    setHeaders(h);
+    setRecords(data);
+    setMessage(`헤더: ${idx + 1}행 / ${data.length}건 파싱`);
+  }
+
+  function changeHeaderRow(delta) {
+    const newIdx = Math.max(0, Math.min(rawRows.length - 2, headerIdx + delta));
+    setHeaderIdx(newIdx);
+    applyHeader(rawRows, newIdx);
+  }
+
   function handleFile(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -114,10 +137,11 @@ export default function SalesPage() {
         const raw = XLSX.utils.sheet_to_json(ws, { header: 1 });
         if (raw.length === 0) { setMessage("빈 파일입니다"); return; }
 
-        // 헤더 행 탐지: 숫자 셀이 0개이고 가장 많은 셀을 가진 행
-        let headerIdx = 0;
+        setRawRows(raw);
+
+        // 헤더 행 자동 탐지: 숫자 셀 0개인 행 우선
+        let detected = 0;
         let bestFilled = 0;
-        // 1차: 숫자가 하나도 없는 순수 문자열 행 중 셀이 가장 많은 행
         for (let i = 0; i < Math.min(raw.length, 20); i++) {
           const row = raw[i];
           if (!row) continue;
@@ -126,10 +150,9 @@ export default function SalesPage() {
           const numCount = filled.filter(c => typeof c === "number").length;
           if (numCount === 0 && filled.length > bestFilled) {
             bestFilled = filled.length;
-            headerIdx = i;
+            detected = i;
           }
         }
-        // 2차 fallback: 순수 문자열 행이 없으면 숫자 가장 적은 행
         if (bestFilled === 0) {
           let bestScore = -Infinity;
           for (let i = 0; i < Math.min(raw.length, 20); i++) {
@@ -139,22 +162,12 @@ export default function SalesPage() {
             if (filled.length < 3) continue;
             const numCount = filled.filter(c => typeof c === "number").length;
             const score = filled.length - numCount * 5;
-            if (score > bestScore) { bestScore = score; headerIdx = i; }
+            if (score > bestScore) { bestScore = score; detected = i; }
           }
         }
 
-        const h = raw[headerIdx].map((c, i) => c != null && c !== "" ? String(c).trim() : `열${i + 1}`);
-        const data = [];
-        for (let i = headerIdx + 1; i < raw.length; i++) {
-          const r = raw[i];
-          if (!r || r.every(c => c == null || c === "")) continue;
-          const row = {};
-          h.forEach((col, j) => { row[col] = r[j] != null ? r[j] : ""; });
-          data.push(row);
-        }
-        setHeaders(h);
-        setRecords(data);
-        setMessage(`${data.length}건 파싱 완료`);
+        setHeaderIdx(detected);
+        applyHeader(raw, detected);
       } catch (err) {
         setMessage(`파싱 실패: ${err.message}`);
       }
@@ -387,7 +400,12 @@ export default function SalesPage() {
               )}
               {records.length > 0 && (
                 <div style={{ marginTop: 16, overflowX: "auto" }}>
-                  <div style={{ fontSize: 12, color: "#4a4d5e", marginBottom: 8 }}>미리보기 (상위 10건)</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                    <span style={{ fontSize: 12, color: "#4a4d5e" }}>헤더 행: {headerIdx + 1}행</span>
+                    <button onClick={() => changeHeaderRow(-1)} disabled={headerIdx <= 0} style={{ ...smallBtn, opacity: headerIdx <= 0 ? 0.3 : 1 }}>▲</button>
+                    <button onClick={() => changeHeaderRow(1)} style={smallBtn}>▼</button>
+                    <span style={{ fontSize: 12, color: "#4a4d5e" }}>미리보기 (상위 10건)</span>
+                  </div>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                     <thead>
                       <tr style={{ borderBottom: "1px solid #1e2130" }}>
@@ -423,4 +441,9 @@ export default function SalesPage() {
 const navBtn = {
   background: "transparent", border: "1px solid #1e2130", color: "#8a8ea0",
   borderRadius: 7, padding: "6px 12px", fontSize: 16, cursor: "pointer", fontWeight: 700,
+};
+
+const smallBtn = {
+  background: "transparent", border: "1px solid #1e2130", color: "#8a8ea0",
+  borderRadius: 5, padding: "2px 8px", fontSize: 11, cursor: "pointer", fontWeight: 600,
 };
