@@ -44,7 +44,7 @@ export default function SettlementPage() {
     all.forEach(r => {
       const code = r.account_code || "";
       const prefix = code.substring(0, 2);
-      if (code === "045100") cogs += Number(r.debit) || 0;
+      if (code === "045100") cogs += Math.abs(Number(r.debit) || 0);
       else if (prefix === "04") rev += Number(r.credit) || 0;
       else if (prefix === "08") exp += Number(r.debit) || 0;
     });
@@ -79,7 +79,7 @@ export default function SettlementPage() {
     const revenue = [], cogs = [], expense = [];
     Object.values(acctMap).forEach(a => {
       const prefix = a.code?.substring(0, 2);
-      if (a.code === "045100") cogs.push({ name: a.name, amount: a.debit });
+      if (a.code === "045100") cogs.push({ name: a.name, amount: Math.abs(a.debit) });
       else if (prefix === "04") revenue.push({ name: a.name, amount: a.credit });
       else if (prefix === "08") expense.push({ name: a.name, amount: a.debit });
     });
