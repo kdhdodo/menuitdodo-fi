@@ -204,7 +204,7 @@ export default function SettlementPage() {
                   {plData.cogs.map((r, i) => (
                     <div key={`c${i}`} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", fontSize: 13, borderBottom: "1px solid #1a1d2a" }}>
                       <span style={{ color: "#8a8ea0" }}>{r.name}</span>
-                      <span style={{ color: "#ff6b6b", fontWeight: 600 }}>-{r.amount.toLocaleString()}</span>
+                      <span style={{ color: "#ff6b6b", fontWeight: 600 }}>-{Math.abs(r.amount).toLocaleString()}</span>
                     </div>
                   ))}
                 </>
