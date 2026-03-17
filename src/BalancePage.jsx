@@ -106,18 +106,31 @@ export default function BalancePage() {
         const ws = wb.Sheets[wb.SheetNames[0]];
         const raw = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-        // 헤더 행 탐지: 숫자 없고 문자열 비율 높은 행
+        // 헤더 행 탐지: 숫자 셀이 0개이고 가장 많은 셀을 가진 행
         let headerIdx = 0;
-        let bestScore = -1;
+        let bestFilled = 0;
         for (let i = 0; i < Math.min(raw.length, 20); i++) {
           const row = raw[i];
           if (!row) continue;
           const filled = row.filter(c => c != null && c !== "");
           if (filled.length < 3) continue;
           const numCount = filled.filter(c => typeof c === "number").length;
-          const strCount = filled.filter(c => typeof c === "string").length;
-          const score = (strCount - numCount * 3) * 10 + filled.length;
-          if (score > bestScore) { bestScore = score; headerIdx = i; }
+          if (numCount === 0 && filled.length > bestFilled) {
+            bestFilled = filled.length;
+            headerIdx = i;
+          }
+        }
+        if (bestFilled === 0) {
+          let bestScore = -Infinity;
+          for (let i = 0; i < Math.min(raw.length, 20); i++) {
+            const row = raw[i];
+            if (!row) continue;
+            const filled = row.filter(c => c != null && c !== "");
+            if (filled.length < 3) continue;
+            const numCount = filled.filter(c => typeof c === "number").length;
+            const score = filled.length - numCount * 5;
+            if (score > bestScore) { bestScore = score; headerIdx = i; }
+          }
         }
 
         const headers = raw[headerIdx].map((c, i) => c != null ? String(c).trim() : `열${i + 1}`);

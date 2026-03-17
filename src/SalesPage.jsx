@@ -114,19 +114,33 @@ export default function SalesPage() {
         const raw = XLSX.utils.sheet_to_json(ws, { header: 1 });
         if (raw.length === 0) { setMessage("빈 파일입니다"); return; }
 
-        // 헤더 행 탐지: 숫자 없고 문자열 비율 높은 행
+        // 헤더 행 탐지: 숫자 셀이 0개이고 가장 많은 셀을 가진 행
         let headerIdx = 0;
-        let bestScore = -1;
+        let bestFilled = 0;
+        // 1차: 숫자가 하나도 없는 순수 문자열 행 중 셀이 가장 많은 행
         for (let i = 0; i < Math.min(raw.length, 20); i++) {
           const row = raw[i];
           if (!row) continue;
           const filled = row.filter(c => c != null && c !== "");
           if (filled.length < 3) continue;
           const numCount = filled.filter(c => typeof c === "number").length;
-          const strCount = filled.filter(c => typeof c === "string").length;
-          // 숫자가 있으면 데이터 행일 가능성 높음 → 감점
-          const score = (strCount - numCount * 3) * 10 + filled.length;
-          if (score > bestScore) { bestScore = score; headerIdx = i; }
+          if (numCount === 0 && filled.length > bestFilled) {
+            bestFilled = filled.length;
+            headerIdx = i;
+          }
+        }
+        // 2차 fallback: 순수 문자열 행이 없으면 숫자 가장 적은 행
+        if (bestFilled === 0) {
+          let bestScore = -Infinity;
+          for (let i = 0; i < Math.min(raw.length, 20); i++) {
+            const row = raw[i];
+            if (!row) continue;
+            const filled = row.filter(c => c != null && c !== "");
+            if (filled.length < 3) continue;
+            const numCount = filled.filter(c => typeof c === "number").length;
+            const score = filled.length - numCount * 5;
+            if (score > bestScore) { bestScore = score; headerIdx = i; }
+          }
         }
 
         const h = raw[headerIdx].map((c, i) => c != null && c !== "" ? String(c).trim() : `열${i + 1}`);
